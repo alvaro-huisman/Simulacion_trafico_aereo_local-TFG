@@ -15,7 +15,7 @@ from prototipos.comun import (
     RegistroVueloCompletadoBase,
     SimulacionBase,
 )
-from .configuracion import VELOCIDAD_CRUCERO
+from .configuracion import ALTURA_CRUCERO, FRACCION_ASCENSO, VELOCIDAD_CRUCERO
 
 
 @dataclass
@@ -54,6 +54,8 @@ class ProcesoVuelo(ProcesoVueloBase):
         self.instante_salida: Optional[float] = None
         self.velocidad_crucero = self._resolver_velocidad()
         self.instantaneas: List[InstantaneaVuelo] = []
+        self.altura_crucero = ALTURA_CRUCERO
+        self.fraccion_ascenso = FRACCION_ASCENSO
 
     def _resolver_velocidad(self) -> float:
         if self.plan.velocidad_crucero is None:
@@ -63,11 +65,28 @@ class ProcesoVuelo(ProcesoVueloBase):
     def _interpolar_posicion(self, progreso: float) -> tuple[float, float, float]:
         ox, oy, oz = self.aeropuerto_origen.posicion
         dx, dy, dz = self.aeropuerto_destino.posicion
-        return (
-            ox + progreso * (dx - ox),
-            oy + progreso * (dy - oy),
-            oz + progreso * (dz - oz),
-        )
+
+        x = ox + progreso * (dx - ox)
+        y = oy + progreso * (dy - oy)
+
+        fraccion = self.fraccion_ascenso
+        if fraccion <= 0.0 or fraccion >= 0.5:
+            z = oz + progreso * (dz - oz)
+        else:
+            if progreso <= fraccion:
+                fase = progreso / fraccion
+                z = oz + self.altura_crucero * fase
+            elif progreso >= 1.0 - fraccion:
+                fase = (progreso - (1.0 - fraccion)) / fraccion
+                z_crucero_destino = dz + self.altura_crucero
+                z = z_crucero_destino + (dz - z_crucero_destino) * fase
+            else:
+                fase = (progreso - fraccion) / (1.0 - 2.0 * fraccion)
+                z_origen_crucero = oz + self.altura_crucero
+                z_destino_crucero = dz + self.altura_crucero
+                z = z_origen_crucero + fase * (z_destino_crucero - z_origen_crucero)
+
+        return (x, y, z)
 
     def _registrar_instantanea(self, progreso: float, llegada_estimacion: float) -> None:
         posicion = self._interpolar_posicion(progreso)

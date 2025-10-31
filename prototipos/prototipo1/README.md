@@ -24,7 +24,7 @@ Todos estos simbolos se exportan desde `prototipos/prototipo1/__init__.py`.
 
 ## Grafo de 10 aeropuertos
 
-`configuracion.py` genera 10 nodos identificados como `A`, `B`, ..., `J` con posiciones tridimensionales y capacidades pseudoaleatorias (semilla fija para reproducibilidad). El grafo es completo y la distancia entre nodos se calcula con la norma euclidiana. La velocidad de crucero es comun para todos los vuelos (`8.33` unidades de distancia por minuto, aprox. 500 km/h).
+`configuracion.py` genera 10 nodos identificados como `A`, `B`, ..., `J` con posiciones tridimensionales y capacidades pseudoaleatorias (semilla fija para reproducibilidad). El grafo es completo y la distancia entre nodos se calcula con la norma euclidiana. La velocidad de crucero es comun para todos los vuelos (`8.33` unidades de distancia por minuto, aprox. 500 km/h) y cada avion asciende/ desciende una altura fija de `15` unidades en los primeros y ultimos tramos del trayecto (10 % del progreso total).
 
 ## Planes de vuelo aleatorios en CSV
 
@@ -35,12 +35,26 @@ Todos estos simbolos se exportan desde `prototipos/prototipo1/__init__.py`.
 python -m prototipos.prototipo1.generar_planes
 ```
 
+Para generar multiples escenarios numerados listos para analisis (por ejemplo 50), usa:
+
+```bash
+python -m prototipos.prototipo1.generar_planes --cantidad 50 --destino prototipos/prototipo1/escenarios
+```
+
+Los archivos resultantes siguen el patron `planes_aleatorios_XXX.csv` dentro del directorio destino.
+
 ## Escenario de ejemplo
 
 `ejemplo.py` reconstruye el grafo, genera el CSV (sobrescribiendolo para garantizar aleatoriedad controlada) y ejecuta la simulacion:
 
 ```bash
 python -m prototipos.prototipo1.ejemplo
+```
+
+Tambien puedes indicar un escenario concreto ya generado (1-50) para reutilizar sus planes:
+
+```bash
+python -m prototipos.prototipo1.ejemplo --escenario 7 --escenarios-dir prototipos/prototipo1/escenarios
 ```
 
 La salida incluye:
@@ -61,13 +75,23 @@ La ejecucion tambien exporta `registros_vuelos.csv` (via `pandas`) con los campo
 
 ## Visualizacion de la red
 
-`visualizacion.py` ofrece un visor interactivo (slider por horas) para inspeccionar la red, coloreando los nodos segun su ocupacion y resaltando las aristas con vuelos activos:
+`visualizacion.py` ofrece un visor interactivo (slider minuto a minuto) para inspeccionar la red, coloreando los nodos segun su ocupacion (leyenda en pantalla), resaltando las aristas con vuelos activos y mostrando la posicion actual de cada avion sobre su trayectoria:
 
 ```bash
 python -m prototipos.prototipo1.visualizacion --hora 12
 ```
 
-Con `--salida ruta.png --sin-interfaz` puede generarse una imagen sin abrir la ventana grafica.
+Puedes cargar un escenario numerado pasando `--escenario N` (o introduciendolo por consola si no se indica). Se admiten valores del 1 al 50, cada uno representando un dia diferente con su propio plan de vuelo almacenado en el directorio `escenarios`. Con `--salida ruta.png --sin-interfaz` puede generarse una imagen sin abrir la ventana grafica.
+
+## Recoleccion masiva de resultados
+
+`recolectar_resultados.py` automatiza la ejecucion de N simulaciones (por defecto 50) y consolida todos los vuelos completados en un unico CSV con la columna extra `N_simulacion` que identifica la simulacion/dia (1-50):
+
+```bash
+python -m prototipos.prototipo1.recolectar_resultados --cantidad 50 --salida prototipos/prototipo1/registros_todos.csv
+```
+
+El script genera los planes que falten en el directorio `escenarios/`, ejecuta cada simulacion y guarda el resultado combinado en la ruta indicada.
 
 ## Personalizacion rapida
 

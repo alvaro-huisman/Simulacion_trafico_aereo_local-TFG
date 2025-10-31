@@ -11,6 +11,12 @@ from prototipos.comun import Vector3
 # Equivale aproximadamente a 500 km/h si la distancia se mide en kilometros.
 VELOCIDAD_CRUCERO: float = 8.33
 
+# Altura adicional que alcanza cada avion durante la fase de crucero (en unidades Z).
+ALTURA_CRUCERO: float = 15.0
+
+# Proporcion del trayecto (0 < valor < 0.5) dedicada a ascenso y descenso respectivamente.
+FRACCION_ASCENSO: float = 0.1
+
 
 def generar_aeropuertos_demo(
     semilla: int = 2025,

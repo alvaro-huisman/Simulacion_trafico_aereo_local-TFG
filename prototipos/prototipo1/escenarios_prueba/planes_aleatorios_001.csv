@@ -1,0 +1,11 @@
+id_vuelo,origen,destino,minuto_salida,minuto_llegada_programada,velocidad_crucero
+EH000,E,H,298,332,8.33
+FD001,F,D,579,649,8.33
+FJ002,F,J,974,1001,8.33
+EG003,E,G,1234,1268,8.33
+FD004,F,D,182,252,8.33
+JA005,J,A,1405,1440,8.33
+IA006,I,A,897,937,8.33
+HC007,H,C,533,548,8.33
+GH008,G,H,870,930,8.33
+AF009,A,F,1004,1053,8.33

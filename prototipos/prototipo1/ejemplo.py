@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from prototipos.prototipo1 import PlanDeVuelo, SimulacionPrototipo1
 from prototipos.prototipo1.configuracion import (
@@ -43,10 +44,15 @@ def cargar_planes_desde_csv(ruta: Path) -> List[PlanDeVuelo]:
     return planes
 
 
-def construir_simulacion(ruta_csv: Path) -> SimulacionPrototipo1:
+def construir_simulacion(
+    ruta_csv: Path,
+    regenerar: bool = True,
+    semilla_planes: int = 1234,
+) -> SimulacionPrototipo1:
     aeropuertos = generar_aeropuertos_demo()
     posiciones = obtener_posiciones(aeropuertos)
-    generar_planes_csv(ruta_csv, posiciones)
+    if regenerar or not ruta_csv.exists():
+        generar_planes_csv(ruta_csv, posiciones, semilla=semilla_planes)
 
     simulacion = SimulacionPrototipo1(paso_tiempo=1)
     simulacion.agregar_aeropuertos(aeropuertos)
@@ -56,7 +62,12 @@ def construir_simulacion(ruta_csv: Path) -> SimulacionPrototipo1:
     return simulacion
 
 
-def mostrar_resumen(simulacion: SimulacionPrototipo1) -> None:
+def mostrar_resumen(
+    simulacion: SimulacionPrototipo1,
+    identificador_simulacion: Optional[str] = None,
+) -> None:
+    if identificador_simulacion:
+        print(f"Simulacion seleccionada: {identificador_simulacion}")
     print("Rutas estaticas (distancias aproximadas):")
     for origen, destino, distancia in simulacion.obtener_rutas_estaticas():
         print(f"  {origen} <-> {destino}: {distancia:7.2f}")
@@ -98,10 +109,66 @@ def mostrar_resumen(simulacion: SimulacionPrototipo1) -> None:
     print(f"\nRegistros exportados en: {ruta_registros}")
 
 
+def _parsear_argumentos() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Ejecuta una simulacion del Prototipo 1 y muestra el resumen en consola."
+    )
+    parser.add_argument(
+        "--planes",
+        type=Path,
+        default=None,
+        help="Ruta a un CSV de planes de vuelo especifico.",
+    )
+    parser.add_argument(
+        "--escenario",
+        type=int,
+        default=None,
+        help="Numero de escenario (1-50) almacenado en el directorio de escenarios.",
+    )
+    parser.add_argument(
+        "--escenarios-dir",
+        type=Path,
+        default=Path(__file__).with_name("escenarios"),
+        help="Directorio donde se buscan los escenarios numerados.",
+    )
+    parser.add_argument(
+        "--semilla",
+        type=int,
+        default=1234,
+        help="Semilla base utilizada para regenerar planes cuando es necesario.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
-    ruta_csv = Path(__file__).with_name("planes_aleatorios.csv")
-    simulacion = construir_simulacion(ruta_csv)
-    mostrar_resumen(simulacion)
+    args = _parsear_argumentos()
+
+    if args.planes is not None:
+        ruta_csv = args.planes
+        identificador = ruta_csv.stem
+        regenerar = not ruta_csv.exists()
+        semilla = args.semilla
+    elif args.escenario is not None:
+        numero = args.escenario
+        if not (1 <= numero <= 50):
+            raise ValueError("El escenario debe estar entre 1 y 50.")
+        args.escenarios_dir.mkdir(parents=True, exist_ok=True)
+        ruta_csv = args.escenarios_dir / f"planes_aleatorios_{numero:03d}.csv"
+        regenerar = not ruta_csv.exists()
+        semilla = args.semilla + numero
+        identificador = f"escenario {numero:03d}"
+    else:
+        ruta_csv = Path(__file__).with_name("planes_aleatorios.csv")
+        identificador = "plan unico"
+        regenerar = True
+        semilla = args.semilla
+
+    simulacion = construir_simulacion(
+        ruta_csv,
+        regenerar=regenerar,
+        semilla_planes=semilla,
+    )
+    mostrar_resumen(simulacion, identificador_simulacion=identificador)
 
 
 if __name__ == "__main__":
