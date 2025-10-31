@@ -1,6 +1,0 @@
-id_vuelo,origen,destino,minuto_salida,minuto_llegada_programada,velocidad_crucero
-GH000,G,H,178,238,8.33
-AD001,A,D,1201,1251,8.33
-AB002,A,B,581,601,8.33
-JH003,J,H,88,117,8.33
-IE004,I,E,306,370,8.33
