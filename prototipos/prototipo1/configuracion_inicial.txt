@@ -1,0 +1,21 @@
+; Configuracion por defecto del Prototipo 1
+
+[general]
+semilla_base = 1234
+
+[aeropuertos]
+semilla = 2025
+
+[escenarios]
+directorio = prototipos/prototipo1/escenarios
+cantidad = 50
+numero_vuelos = 60
+
+[plan_unico]
+ruta_csv = prototipos/prototipo1/planes_aleatorios.csv
+
+[visualizacion]
+minuto_defecto = 720
+
+[recoleccion]
+salida_csv = prototipos/prototipo1/registros_todos.csv

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional
 
 import pandas as pd
 import simpy
@@ -115,7 +115,17 @@ class ProcesoVuelo(ProcesoVueloBase):
             yield self.entorno.timeout(espera_inicial)
 
         self.instante_salida = self.entorno.now
+        departure_time = self.instante_salida
         self.aeropuerto_origen.liberar_plaza_salida()
+        self.simulacion.registrar_evento(
+            "salida",
+            {
+                "id_vuelo": self.plan.id_vuelo,
+                "origen": self.plan.id_origen,
+                "destino": self.plan.id_destino,
+                "minuto": departure_time,
+            },
+        )
         self.simulacion.vuelos_dinamicos[self.plan.id_vuelo] = self
 
         duracion_programada = self.plan.duracion_programada
@@ -137,6 +147,14 @@ class ProcesoVuelo(ProcesoVueloBase):
         )
         if evento_aterrizaje is not None:
             momento_entrada_cola = self.entorno.now
+            self.simulacion.registrar_evento(
+                "cola_espera",
+                {
+                    "id_vuelo": self.plan.id_vuelo,
+                    "destino": self.plan.id_destino,
+                    "minuto": momento_entrada_cola,
+                },
+            )
             while True:
                 resultado = yield evento_aterrizaje | self.entorno.timeout(
                     self.paso_tiempo
@@ -160,10 +178,36 @@ class ProcesoVuelo(ProcesoVueloBase):
         )
         self.simulacion.registros_finalizados.append(registro)
         self.simulacion.vuelos_dinamicos.pop(self.plan.id_vuelo, None)
+        self.simulacion.registrar_evento(
+            "llegada",
+            {
+                "id_vuelo": self.plan.id_vuelo,
+                "origen": self.plan.id_origen,
+                "destino": self.plan.id_destino,
+                "minuto": llegada_real,
+                "retraso": retraso,
+            },
+        )
 
 
 class SimulacionPrototipo1(SimulacionBase):
     """Simulador del Prototipo 1."""
+
+    def __init__(
+        self,
+        paso_tiempo: int = 1,
+        callback_evento: Optional[
+            Callable[[str, Dict[str, float | str]], None]
+        ] = None,
+    ) -> None:
+        super().__init__(paso_tiempo=paso_tiempo)
+        self._callback_evento = callback_evento
+        self.eventos: List[Dict[str, float | str]] = []
+
+    def registrar_evento(self, tipo: str, datos: Dict[str, float | str]) -> None:
+        if self._callback_evento is not None:
+            self._callback_evento(tipo, datos)
+        self.eventos.append({"tipo": tipo, **datos})
 
     def crear_proceso_vuelo(self, plan: PlanDeVueloBase) -> ProcesoVueloBase:
         plan_especifico = (
@@ -205,5 +249,14 @@ class SimulacionPrototipo1(SimulacionBase):
     def exportar_registros_csv(self, ruta: Path) -> Path:
         ruta.parent.mkdir(parents=True, exist_ok=True)
         dataframe = self.registros_a_dataframe()
+        dataframe.to_csv(ruta, index=False, encoding="utf-8")
+        return ruta
+
+    def eventos_a_dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame(self.eventos)
+
+    def exportar_eventos_csv(self, ruta: Path) -> Path:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        dataframe = self.eventos_a_dataframe()
         dataframe.to_csv(ruta, index=False, encoding="utf-8")
         return ruta

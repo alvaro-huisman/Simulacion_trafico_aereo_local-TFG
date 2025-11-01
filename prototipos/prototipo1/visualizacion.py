@@ -13,6 +13,11 @@ from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
 from matplotlib.widgets import Slider
 
+from .configuracion_app import (
+    DEFAULT_CONFIG_PATH,
+    cargar_configuracion,
+    obtener_valor,
+)
 from .ejemplo import construir_simulacion
 from .simulacion import SimulacionPrototipo1, RegistroVueloCompletado
 
@@ -272,11 +277,15 @@ def construir_y_ejecutar_simulacion(
     ruta_planes: Path,
     regenerar: bool = True,
     semilla_planes: int = 1234,
+    numero_vuelos: int = 60,
+    semilla_aeropuertos: int = 2025,
 ) -> SimulacionPrototipo1:
     simulacion = construir_simulacion(
         ruta_planes,
         regenerar=regenerar,
         semilla_planes=semilla_planes,
+        numero_vuelos=numero_vuelos,
+        semilla_aeropuertos=semilla_aeropuertos,
     )
     simulacion.ejecutar(hasta=24 * 60)
     return simulacion
@@ -309,6 +318,12 @@ def main() -> None:
         description="Visualiza el estado de la red de aeropuertos del Prototipo 1."
     )
     parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_CONFIG_PATH,
+        help="Ruta al archivo de configuracion (por defecto configuracion_inicial.txt).",
+    )
+    parser.add_argument(
         "--minuto",
         type=int,
         default=None,
@@ -335,7 +350,7 @@ def main() -> None:
     parser.add_argument(
         "--escenarios-dir",
         type=Path,
-        default=Path(__file__).with_name("escenarios"),
+        default=None,
         help="Directorio donde se almacenan los escenarios numerados.",
     )
     parser.add_argument(
@@ -351,8 +366,19 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+    configuracion = cargar_configuracion(args.config)
 
-    minuto_inicial = 0
+    minuto_defecto = obtener_valor(configuracion, "visualizacion", "minuto_defecto", int)
+    semilla_base = obtener_valor(configuracion, "general", "semilla_base", int)
+    semilla_aeropuertos = obtener_valor(configuracion, "aeropuertos", "semilla", int)
+    numero_vuelos = obtener_valor(configuracion, "escenarios", "numero_vuelos", int)
+    directorio_escenarios = (
+        args.escenarios_dir
+        if args.escenarios_dir is not None
+        else obtener_valor(configuracion, "escenarios", "directorio", Path)
+    )
+
+    minuto_inicial = minuto_defecto
     if args.hora is not None:
         if not (0 <= args.hora <= 23):
             raise ValueError("La hora debe estar entre 0 y 23.")
@@ -362,7 +388,7 @@ def main() -> None:
             raise ValueError("El minuto debe estar entre 0 y 1439.")
         minuto_inicial = args.minuto
 
-    semilla_planes = 1234
+    semilla_planes = semilla_base
     regenerar = True
     ruta_planes: Path
 
@@ -378,17 +404,18 @@ def main() -> None:
         if not (1 <= numero <= max_escenarios):
             raise ValueError(f"El escenario debe estar entre 1 y {max_escenarios}.")
 
-        directorio = args.escenarios_dir
-        directorio.mkdir(parents=True, exist_ok=True)
-        ruta_planes = directorio / f"planes_aleatorios_{numero:03d}.csv"
+        directorio_escenarios.mkdir(parents=True, exist_ok=True)
+        ruta_planes = directorio_escenarios / f"planes_aleatorios_{numero:03d}.csv"
         regenerar = not ruta_planes.exists()
-        semilla_planes = 1234 + numero
+        semilla_planes = semilla_base + numero
         identificador = f"escenario {numero:03d}"
 
     simulacion = construir_y_ejecutar_simulacion(
         ruta_planes,
         regenerar=regenerar,
         semilla_planes=semilla_planes,
+        numero_vuelos=numero_vuelos,
+        semilla_aeropuertos=semilla_aeropuertos,
     )
     print(f"Simulacion visualizada: {identificador}")
     visualizador = VisualizadorRed(simulacion, minuto_inicial=minuto_inicial)

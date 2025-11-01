@@ -11,6 +11,7 @@ from typing import Dict, Iterable, List, Tuple
 
 from prototipos.comun import Vector3
 from .configuracion import VELOCIDAD_CRUCERO, generar_aeropuertos_demo, obtener_posiciones
+from .configuracion_app import cargar_configuracion, obtener_valor, DEFAULT_CONFIG_PATH
 
 CAMPO_ID = "id_vuelo"
 CAMPO_ORIGEN = "origen"
@@ -119,21 +120,27 @@ def cargar_planes_csv(ruta_csv: Path) -> Iterable[Dict[str, str]]:
             yield fila
 
 
-def _parsear_argumentos() -> argparse.Namespace:
+def _parsear_argumentos() -> Tuple[argparse.Namespace, int]:
     parser = argparse.ArgumentParser(
         description="Genera planes de vuelo aleatorios para el Prototipo 1."
     )
     parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_CONFIG_PATH,
+        help="Ruta al archivo de configuracion (por defecto configuracion_inicial.txt).",
+    )
+    parser.add_argument(
         "--cantidad",
         type=int,
-        default=1,
-        help="Numero de escenarios a generar (por defecto 1).",
+        default=None,
+        help="Numero de escenarios a generar (por defecto, valor del archivo de configuracion).",
     )
     parser.add_argument(
         "--numero-vuelos",
         type=int,
-        default=60,
-        help="Numero de vuelos programados por escenario (por defecto 60).",
+        default=None,
+        help="Numero de vuelos programados por escenario.",
     )
     parser.add_argument(
         "--destino",
@@ -147,10 +154,56 @@ def _parsear_argumentos() -> argparse.Namespace:
     parser.add_argument(
         "--semilla",
         type=int,
-        default=1234,
+        default=None,
         help="Semilla base para el generador de numeros aleatorios.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--semilla-aeropuertos",
+        type=int,
+        default=None,
+        help="Semilla utilizada para generar las posiciones de aeropuertos.",
+    )
+    args = parser.parse_args()
+    configuracion = cargar_configuracion(args.config)
+
+    cantidad = (
+        args.cantidad
+        if args.cantidad is not None
+        else obtener_valor(configuracion, "escenarios", "cantidad", int)
+    )
+    numero_vuelos = (
+        args.numero_vuelos
+        if args.numero_vuelos is not None
+        else obtener_valor(configuracion, "escenarios", "numero_vuelos", int)
+    )
+    semilla = (
+        args.semilla
+        if args.semilla is not None
+        else obtener_valor(configuracion, "general", "semilla_base", int)
+    )
+    semilla_aeropuertos = (
+        args.semilla_aeropuertos
+        if args.semilla_aeropuertos is not None
+        else obtener_valor(configuracion, "aeropuertos", "semilla", int)
+    )
+
+    if cantidad == 1:
+        destino_por_defecto = obtener_valor(
+            configuracion, "plan_unico", "ruta_csv", Path
+        )
+    else:
+        destino_por_defecto = obtener_valor(
+            configuracion, "escenarios", "directorio", Path
+        )
+
+    destino = args.destino if args.destino is not None else destino_por_defecto
+
+    args.cantidad = cantidad
+    args.numero_vuelos = numero_vuelos
+    args.destino = destino
+    args.semilla = semilla
+
+    return args, semilla_aeropuertos
 
 
 def _resolver_destino(cantidad: int, destino: Path | None) -> Tuple[Path, bool]:
@@ -165,10 +218,10 @@ def _resolver_destino(cantidad: int, destino: Path | None) -> Tuple[Path, bool]:
 
 
 if __name__ == "__main__":
-    args = _parsear_argumentos()
+    args, semilla_aeropuertos = _parsear_argumentos()
     destino, es_directorio = _resolver_destino(args.cantidad, args.destino)
 
-    aeropuertos_demo = generar_aeropuertos_demo()
+    aeropuertos_demo = generar_aeropuertos_demo(semilla=semilla_aeropuertos)
     posiciones = obtener_posiciones(aeropuertos_demo)
 
     if es_directorio:
