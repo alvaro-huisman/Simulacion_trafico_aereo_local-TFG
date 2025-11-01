@@ -1,4 +1,4 @@
-from .simulacion import (
+from .core.simulacion import (
     InstantaneaVuelo,
     PlanDeVuelo,
     RegistroVueloCompletado,

@@ -54,12 +54,12 @@ class ProcesoVuelo(ProcesoVueloBase):
         self.instante_salida: Optional[float] = None
         self.velocidad_crucero = self._resolver_velocidad()
         self.instantaneas: List[InstantaneaVuelo] = []
-        self.altura_crucero = ALTURA_CRUCERO
-        self.fraccion_ascenso = FRACCION_ASCENSO
+        self.altura_crucero = simulacion.altura_crucero
+        self.fraccion_ascenso = simulacion.fraccion_ascenso
 
     def _resolver_velocidad(self) -> float:
         if self.plan.velocidad_crucero is None:
-            self.plan.velocidad_crucero = VELOCIDAD_CRUCERO
+            self.plan.velocidad_crucero = self.simulacion.velocidad_crucero
         return self.plan.velocidad_crucero
 
     def _interpolar_posicion(self, progreso: float) -> tuple[float, float, float]:
@@ -199,15 +199,24 @@ class SimulacionPrototipo1(SimulacionBase):
         callback_evento: Optional[
             Callable[[str, Dict[str, float | str]], None]
         ] = None,
+        guardar_eventos: bool = True,
+        velocidad_crucero: float = VELOCIDAD_CRUCERO,
+        altura_crucero: float = ALTURA_CRUCERO,
+        fraccion_ascenso: float = FRACCION_ASCENSO,
     ) -> None:
         super().__init__(paso_tiempo=paso_tiempo)
         self._callback_evento = callback_evento
+        self._guardar_eventos = guardar_eventos
         self.eventos: List[Dict[str, float | str]] = []
+        self.velocidad_crucero = velocidad_crucero
+        self.altura_crucero = altura_crucero
+        self.fraccion_ascenso = fraccion_ascenso
 
     def registrar_evento(self, tipo: str, datos: Dict[str, float | str]) -> None:
         if self._callback_evento is not None:
             self._callback_evento(tipo, datos)
-        self.eventos.append({"tipo": tipo, **datos})
+        if self._guardar_eventos:
+            self.eventos.append({"tipo": tipo, **datos})
 
     def crear_proceso_vuelo(self, plan: PlanDeVueloBase) -> ProcesoVueloBase:
         plan_especifico = (
