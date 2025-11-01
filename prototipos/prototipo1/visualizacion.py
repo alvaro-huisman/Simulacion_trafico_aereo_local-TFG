@@ -6,6 +6,7 @@ from .scripts.visualizacion import (
     VisualizadorRed,
     construir_y_ejecutar_simulacion,
     main,
+    mostrar_visualizador_con_menu,
     vuelos_activos_en,
 )
 
@@ -13,6 +14,7 @@ __all__ = [
     "VisualizadorRed",
     "construir_y_ejecutar_simulacion",
     "main",
+    "mostrar_visualizador_con_menu",
     "vuelos_activos_en",
 ]
 

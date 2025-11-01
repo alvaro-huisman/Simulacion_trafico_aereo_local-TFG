@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -12,6 +12,16 @@ import numpy as np
 from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
 from matplotlib.widgets import Slider
+
+try:  # pragma: no cover - soporte opcional de GUI
+    import tkinter as tk
+    from tkinter import ttk
+
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+except ImportError:  # pragma: no cover
+    tk = None  # type: ignore
+    ttk = None  # type: ignore
+    FigureCanvasTkAgg = None  # type: ignore
 
 from ..core.configuracion import ALTURA_CRUCERO, FRACCION_ASCENSO, VELOCIDAD_CRUCERO
 from ..core.configuracion_app import AppConfig, DEFAULT_CONFIG_PATH
@@ -301,6 +311,98 @@ def construir_y_ejecutar_simulacion(
     )
     simulacion.ejecutar(hasta=duracion_minutos)
     return simulacion
+
+
+def mostrar_visualizador_con_menu(
+    escenarios: Sequence[int],
+    generador_simulacion: Callable[[int], SimulacionPrototipo1],
+    *,
+    minuto_inicial: int,
+    duracion_minutos: int,
+    titulo: str = "Visualizacion Prototipo 1",
+) -> None:
+    """Muestra una interfaz con menu desplegable para escoger escenarios."""
+    if tk is None or ttk is None or FigureCanvasTkAgg is None:
+        raise RuntimeError(
+            "Tkinter no esta disponible en este entorno; instala Tk o usa el visor CLI."
+        )
+
+    escenarios_unicos = sorted(set(escenarios))
+    if not escenarios_unicos:
+        raise ValueError("No hay escenarios disponibles para visualizar.")
+
+    minuto_inicial = max(0, min(minuto_inicial, max(duracion_minutos - 1, 0)))
+    escenario_actual = escenarios_unicos[0]
+    cache: Dict[int, SimulacionPrototipo1] = {}
+
+    def obtener_simulacion(numero: int) -> SimulacionPrototipo1:
+        if numero not in cache:
+            cache[numero] = generador_simulacion(numero)
+        return cache[numero]
+
+    root = tk.Tk()
+    root.title(titulo)
+
+    marco_controles = ttk.Frame(root, padding=(12, 8))
+    marco_controles.pack(side=tk.TOP, fill=tk.X)
+
+    ttk.Label(marco_controles, text="Escenario:").pack(side=tk.LEFT)
+
+    valores_combo = [f"{valor:03d}" for valor in escenarios_unicos]
+    combo = ttk.Combobox(
+        marco_controles,
+        values=valores_combo,
+        state="readonly",
+        width=8,
+    )
+    combo.pack(side=tk.LEFT, padx=(6, 12))
+    combo.set(f"{escenario_actual:03d}")
+
+    etiqueta_estado = ttk.Label(marco_controles, text="Listo")
+    etiqueta_estado.pack(side=tk.LEFT, expand=True, anchor="w")
+
+    contenedor_figura = ttk.Frame(root)
+    contenedor_figura.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+    canvas: Optional[FigureCanvasTkAgg] = None
+    visualizador_actual: Optional[VisualizadorRed] = None
+
+    def cargar_escenario(numero: int) -> None:
+        nonlocal canvas, visualizador_actual, escenario_actual
+        etiqueta_estado.config(text=f"Cargando escenario {numero:03d}...")
+        root.update_idletasks()
+        simulacion = obtener_simulacion(numero)
+        nuevo_visualizador = VisualizadorRed(
+            simulacion,
+            duracion_minutos=duracion_minutos,
+            minuto_inicial=minuto_inicial,
+        )
+        if canvas is not None:
+            canvas.get_tk_widget().destroy()
+            if visualizador_actual is not None:
+                plt.close(visualizador_actual.figura)
+        visualizador_actual = nuevo_visualizador
+        canvas = FigureCanvasTkAgg(nuevo_visualizador.figura, master=contenedor_figura)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        escenario_actual = numero
+        etiqueta_estado.config(text=f"Escenario activo: {numero:03d}")
+
+    def _seleccion_combo(evento: Optional[tk.Event] = None) -> None:
+        valor = combo.get()
+        try:
+            seleccionado = int(valor)
+        except ValueError:
+            etiqueta_estado.config(text="Seleccion no valida")
+            return
+        cargar_escenario(seleccionado)
+
+    combo.bind("<<ComboboxSelected>>", _seleccion_combo)
+    cargar_escenario(escenario_actual)
+    root.mainloop()
+
+    if visualizador_actual is not None:
+        plt.close(visualizador_actual.figura)
 
 
 def _solicitar_escenario(
