@@ -3,3 +3,6 @@ pandas>=2.2,<2.3
 simpy>=4.1,<5.0
 matplotlib>=3.8,<3.9
 networkx>=3.2,<3.3
+geopy>=2.4,<2.5
+pyproj>=3.6,<3.7
+contextily>=1.6,<1.7
