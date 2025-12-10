@@ -27,30 +27,33 @@ class TipoAeronave:
     consumo_asc_l_h: float
     consumo_cru_l_h: float
     consumo_des_l_h: float
+    capacidad_combustible_l: float
 
 
 TIPO_CORTO_RADIO = TipoAeronave(
     nombre="corto_radio",
     vel_asc_kmh=500.0,
-    vel_cru_kmh=780.0,
+    vel_cru_kmh=820.0,
     vel_des_kmh=520.0,
     nivel_crucero_min_ft=28000,
-    nivel_crucero_max_ft=36000,
+    nivel_crucero_max_ft=34000,
     consumo_asc_l_h=3800.0,
     consumo_cru_l_h=3000.0,
     consumo_des_l_h=2100.0,
+    capacidad_combustible_l=20000.0,
 )
 
 TIPO_MEDIO_RADIO = TipoAeronave(
     nombre="medio_radio",
-    vel_asc_kmh=540.0,
-    vel_cru_kmh=830.0,
-    vel_des_kmh=560.0,
-    nivel_crucero_min_ft=32000,
-    nivel_crucero_max_ft=40000,
-    consumo_asc_l_h=4200.0,
-    consumo_cru_l_h=3400.0,
-    consumo_des_l_h=2400.0,
+    vel_asc_kmh=560.0,
+    vel_cru_kmh=900.0,
+    vel_des_kmh=580.0,
+    nivel_crucero_min_ft=33000,
+    nivel_crucero_max_ft=41000,
+    consumo_asc_l_h=4400.0,
+    consumo_cru_l_h=3600.0,
+    consumo_des_l_h=2600.0,
+    capacidad_combustible_l=32000.0,
 )
 
 
@@ -80,6 +83,27 @@ class ConfigSimulacion:
     exterior_estancia_max: int = 45
     tmin_fase_asc_des_min: float = 5.0
     tmin_fase_crucero_min: float = 5.0
+    tmin_fase_rodaje_min: float = 3.0
+    tmin_fase_despegue_min: float = 2.0
+    tmin_fase_aproximacion_min: float = 4.0
+    tmin_fase_aterrizaje_min: float = 2.0
+    dist_rodaje_km: float = 4.0
+    frac_dist_despegue: float = 0.08
+    frac_dist_aproximacion: float = 0.1
+    frac_dist_aterrizaje: float = 0.05
+    dist_min_aterrizaje_km: float = 5.0
+    consumo_rodaje_factor: float = 0.35
+
+
+# Velocidades de referencia (km/h) basadas en el fragmento facilitado
+VELOCIDADES_REFERENCIA: Dict[str, Tuple[float, float]] = {
+    "rodaje": (35.0, 60.0),
+    "despegue": (250.0, 300.0),
+    "crucero_corto": (820.0, 880.0),
+    "crucero_medio": (880.0, 940.0),
+    "aproximacion": (380.0, 380.0),
+    "aterrizaje": (240.0, 250.0),
+}
 
 
 class SimulacionPrototipo2(SimulacionBase):
@@ -112,6 +136,7 @@ class SimulacionPrototipo2(SimulacionBase):
         self._separacion_ruta: Dict[Tuple[str, str], float] = {}
         self._ultimo_evento_pista: Dict[str, float] = {}
         self._registros: List[Dict[str, object]] = []
+        self._logs_vuelos: List[Dict[str, object]] = []
         self._vientos_cache: Dict[Tuple[str, str], str] = {}
         self._trafico_por_aer = self._calcular_trafico_por_aeropuerto()
         self._ocupacion: Dict[str, int] = {aid: 0 for aid in self._recursos.keys()}
@@ -230,12 +255,11 @@ class SimulacionPrototipo2(SimulacionBase):
         )
 
     def _resolver_viento(self, aer_id: str, fase: str) -> tuple[str, float]:
+        """Obtiene la etiqueta de viento y factor segun fase."""
         aer_id = self._aer_id_scalar(aer_id)
         datos = self._datos_aeropuerto(aer_id)
-        if fase == "crucero":
-            etiqueta = datos.get("viento_alta_cota", None)
-        else:
-            etiqueta = datos.get("viento_baja_cota", None)
+        fase_altura = "viento_alta_cota" if fase == "crucero" else "viento_baja_cota"
+        etiqueta = datos.get(fase_altura, None)
         if etiqueta in (None, "", "neutro"):
             clave = (aer_id, fase)
             if clave not in self._vientos_cache:
@@ -280,17 +304,85 @@ class SimulacionPrototipo2(SimulacionBase):
     def _combustible(self, duracion_min: float, consumo_l_h: float, fuel_factor: float = 1.0) -> float:
         return (duracion_min / 60.0) * consumo_l_h * fuel_factor
 
+    def _fuel_factor_por_viento(self, etiqueta_viento: str) -> float:
+        if etiqueta_viento == "a_favor":
+            return self.config.fuel_factor_a_favor
+        if etiqueta_viento == "en_contra":
+            return self.config.fuel_factor_en_contra
+        return self.config.fuel_factor_neutro
+
+    def _segmentos_distancia(self, dist_km: float) -> Tuple[float, float, float, float]:
+        """Divide la distancia en tramos para despegue, crucero, aproximacion y aterrizaje."""
+        dist_despegue = max(1.0, dist_km * self.config.frac_dist_despegue)
+        dist_aprox = max(1.0, dist_km * self.config.frac_dist_aproximacion)
+        dist_aterr = max(self.config.dist_min_aterrizaje_km, dist_km * self.config.frac_dist_aterrizaje)
+        resto = dist_km - (dist_despegue + dist_aprox + dist_aterr)
+        if resto < 0:
+            total_base = dist_despegue + dist_aprox + dist_aterr
+            if total_base > 0:
+                escala = dist_km / total_base
+                dist_despegue *= escala
+                dist_aprox *= escala
+                dist_aterr *= escala
+            dist_crucero = 0.0
+        else:
+            dist_crucero = max(resto, 0.0)
+        return dist_despegue, dist_crucero, dist_aprox, dist_aterr
+
+    def _velocidad_objetivo(self, fase: str, tipo: TipoAeronave) -> float:
+        """Devuelve una velocidad aleatoria dentro del rango de la fase."""
+        if fase == "crucero":
+            clave = "crucero_corto" if tipo == TIPO_CORTO_RADIO else "crucero_medio"
+        else:
+            clave = fase
+        v_min, v_max = VELOCIDADES_REFERENCIA.get(clave, (tipo.vel_cru_kmh, tipo.vel_cru_kmh))
+        return self.rng.uniform(v_min, v_max)
+
+    def _registrar_log_fase(
+        self,
+        id_vuelo: str,
+        fase: str,
+        origen: str,
+        destino_prog: str,
+        destino_final: str,
+        inicio_min: float,
+        fin_min: float,
+        distancia_km: float,
+        velocidad_kmh: float,
+        viento: str,
+        combustible_l: float,
+        nota: str | None = None,
+    ) -> None:
+        self._logs_vuelos.append(
+            {
+                "id_vuelo": id_vuelo,
+                "fase": fase,
+                "origen": origen,
+                "destino_programado": destino_prog,
+                "destino_final": destino_final,
+                "minuto_inicio": inicio_min,
+                "minuto_fin": fin_min,
+                "duracion_min": max(0.0, fin_min - inicio_min),
+                "distancia_km": distancia_km,
+                "velocidad_kmh": velocidad_kmh,
+                "viento": viento,
+                "combustible_consumido_l": combustible_l,
+                "nota": nota or "",
+            }
+        )
+
     def _redirigir_si_conviene(
         self,
         destino_original: str,
         tiempo_espera: float,
         origen_actual: str,
         dist_plan_km: float,
-    ) -> Tuple[str, float, bool]:
-        """Evalua redireccion: devuelve destino_final, retraso_extra, redirigido."""
+    ) -> Tuple[str, float, bool, float]:
+        """Evalua redireccion: devuelve destino_final, retraso_extra, redirigido, distancia_estim_km."""
         mejor_dest = destino_original
         mejor_retraso = tiempo_espera
         redirigido = False
+        mejor_dist_ruta = dist_plan_km
 
         candidato_optimo = None
         mejor_dist_al_destino = float("inf")
@@ -333,76 +425,109 @@ class SimulacionPrototipo2(SimulacionBase):
                 mejor_dest = candidato_optimo
                 mejor_retraso = tiempo_extra
                 redirigido = True
+                mejor_dist_ruta = dist_total
 
-        return mejor_dest, mejor_retraso, redirigido
+        return mejor_dest, mejor_retraso, redirigido, mejor_dist_ruta
 
     def _proceso_vuelo(self, vuelo: Dict[str, object]) -> simpy.events.Event:
         origen = self._aer_id_scalar(vuelo["origen"])
         destino = self._aer_id_scalar(vuelo["destino"])
         salida_prog = float(vuelo["minuto_salida"])
-        dist_km = float(vuelo.get("distancia_km", 0.0))
+        dist_plan_km = float(vuelo.get("distancia_km", 0.0))
+        dist_plan_original = dist_plan_km
         es_exterior = bool(vuelo.get("es_exterior", False)) or destino.upper() == "EXTERIOR"
 
         # 1) Espera hasta la hora de salida
         if self.env.now < salida_prog:
             yield self.env.timeout(salida_prog - self.env.now)
 
-        # 2) Ocupa capacidad en el origen (taxis / gate) y libera al despegar
-        recurso_origen = self._recursos[origen]
-        with recurso_origen.request() as req:
-            yield req
-            self._log_evento(origen, "ocupacion_origen", delta=1)
-            # Separacion pista en origen
-            yield from self._esperar_pista(origen)
-            if self.config.tiempo_embarque_min > 0:
-                yield self.env.timeout(self.config.tiempo_embarque_min)
-            self._log_evento(origen, "despegue", delta=-1)
-        # liberacion implicita al salir del with
+        # 2) Seleccion de aeronave
+        tipo = self._seleccionar_tipo_aeronave(dist_plan_km)
+        dist_despegue, dist_crucero, dist_aprox, dist_aterr = self._segmentos_distancia(dist_plan_km)
 
-        # 3) Seleccion de aeronave
-        tipo = self._seleccionar_tipo_aeronave(dist_km)
-
-        # 4) Fases de vuelo
+        # 3) Fases de vuelo
         combustible_consumido_l = 0.0
         retraso_por_redir = 0.0
         redirigido = False
         destino_final = destino
+        viento_despegue_label, viento_cr_label, viento_aprx_label = "neutro", "neutro", "neutro"
+        vel_cr = self._velocidad_objetivo("crucero", tipo)
 
-        # Ascenso
-        viento_label, factor_viento = self._resolver_viento(origen, fase="ascenso")
-        vel_asc = tipo.vel_asc_kmh * factor_viento
-        t_asc = self._tiempo_fase(max(1.0, dist_km * 0.1), vel_asc)
-        fuel_factor = self.config.fuel_factor_a_favor if viento_label == "a_favor" else (
-            self.config.fuel_factor_en_contra if viento_label == "en_contra" else self.config.fuel_factor_neutro
-        )
-        combustible_consumido_l += self._combustible(t_asc, tipo.consumo_asc_l_h, fuel_factor)
-        yield self.env.timeout(t_asc)
+        # Ocupa capacidad en el origen (rodaje y despegue dentro del recurso)
+        recurso_origen = self._recursos[origen]
+        with recurso_origen.request() as req:
+            yield req
+            self._log_evento(origen, "ocupacion_origen", delta=1)
+            vel_rodaje = self._velocidad_objetivo("rodaje", tipo)
+            t_rodaje = max(self.config.tmin_fase_rodaje_min, self._tiempo_fase(self.config.dist_rodaje_km, vel_rodaje))
+            fuel_rodaje = self._combustible(
+                t_rodaje, tipo.consumo_asc_l_h * self.config.consumo_rodaje_factor, self.config.fuel_factor_neutro
+            )
+            combustible_consumido_l += fuel_rodaje
+            inicio_fase = self.env.now
+            yield self.env.timeout(t_rodaje)
+            self._registrar_log_fase(
+                vuelo.get("id_vuelo", ""),
+                "rodaje",
+                origen,
+                destino,
+                destino_final,
+                inicio_fase,
+                self.env.now,
+                self.config.dist_rodaje_km,
+                vel_rodaje,
+                "neutro",
+                fuel_rodaje,
+            )
+
+            yield from self._esperar_pista(origen)
+            if self.config.tiempo_embarque_min > 0:
+                yield self.env.timeout(self.config.tiempo_embarque_min)
+            viento_despegue_label, factor_viento = self._resolver_viento(origen, fase="despegue")
+            vel_despegue = self._velocidad_objetivo("despegue", tipo) * factor_viento
+            t_despegue = max(self.config.tmin_fase_despegue_min, self._tiempo_fase(dist_despegue, vel_despegue))
+            fuel_factor = self._fuel_factor_por_viento(viento_despegue_label)
+            fuel_despegue = self._combustible(t_despegue, tipo.consumo_asc_l_h, fuel_factor)
+            combustible_consumido_l += fuel_despegue
+            inicio_fase = self.env.now
+            yield self.env.timeout(t_despegue)
+            self._registrar_log_fase(
+                vuelo.get("id_vuelo", ""),
+                "despegue",
+                origen,
+                destino,
+                destino_final,
+                inicio_fase,
+                self.env.now,
+                dist_despegue,
+                vel_despegue,
+                viento_despegue_label,
+                fuel_despegue,
+            )
+            self._log_evento(origen, "despegue", delta=-1)
 
         # Crucero
         viento_cr_label, factor_viento_cr = self._resolver_viento(origen, fase="crucero")
-        vel_cr = tipo.vel_cru_kmh * factor_viento_cr
-        t_cr = max(self.config.tmin_fase_crucero_min, self._tiempo_fase(max(1.0, dist_km * 0.8), vel_cr))
-        fuel_factor_cr = self.config.fuel_factor_a_favor if viento_cr_label == "a_favor" else (
-            self.config.fuel_factor_en_contra if viento_cr_label == "en_contra" else self.config.fuel_factor_neutro
-        )
-        combustible_consumido_l += self._combustible(t_cr, tipo.consumo_cru_l_h, fuel_factor_cr)
+        vel_cr = max(1.0, vel_cr * factor_viento_cr)
+        t_cr = max(self.config.tmin_fase_crucero_min, self._tiempo_fase(dist_crucero, vel_cr))
+        fuel_factor_cr = self._fuel_factor_por_viento(viento_cr_label)
+        fuel_cr = self._combustible(t_cr, tipo.consumo_cru_l_h, fuel_factor_cr)
+        combustible_consumido_l += fuel_cr
+        inicio_fase = self.env.now
         yield self.env.timeout(t_cr)
-
-        # Descenso
-        if es_exterior:
-            viento_des_label, factor_viento_des = "neutro", self.config.factor_viento_neutro
-        else:
-            viento_des_label, factor_viento_des = self._resolver_viento(destino, fase="descenso")
-        vel_des = tipo.vel_des_kmh * factor_viento_des
-        t_des = max(self.config.tmin_fase_asc_des_min, self._tiempo_fase(max(1.0, dist_km * 0.1), vel_des))
-        fuel_factor_des = self.config.fuel_factor_a_favor if viento_des_label == "a_favor" else (
-            self.config.fuel_factor_en_contra if viento_des_label == "en_contra" else self.config.fuel_factor_neutro
+        self._registrar_log_fase(
+            vuelo.get("id_vuelo", ""),
+            "crucero",
+            origen,
+            destino,
+            destino_final,
+            inicio_fase,
+            self.env.now,
+            dist_crucero,
+            vel_cr,
+            viento_cr_label,
+            fuel_cr,
         )
-        combustible_consumido_l += self._combustible(t_des, tipo.consumo_des_l_h, fuel_factor_des)
-        yield self.env.timeout(t_des)
-
-        # 5) Separacion en ruta (simplificada)
-        yield from self._esperar_separacion_ruta(origen, destino)
 
         llegada_estimada = self.env.now
         recurso_destino = self._recursos.get(destino)
@@ -415,27 +540,107 @@ class SimulacionPrototipo2(SimulacionBase):
             tiempo_espera_estimado = (cola_actual / max(1, capacidad_dest)) * self.config.paso_minutos
 
         if (not es_exterior) and tiempo_espera_estimado > self.config.T_umbral_espera:
-            destino_alternativo, mejor_retraso, redir = self._redirigir_si_conviene(
-                destino, tiempo_espera_estimado, origen, dist_km
+            destino_alternativo, mejor_retraso, redir, dist_alt = self._redirigir_si_conviene(
+                destino, tiempo_espera_estimado, origen, dist_plan_km
             )
             if redir:
                 redirigido = True
                 retraso_por_redir = mejor_retraso
                 destino_final = destino_alternativo
                 recurso_destino = self._recursos[destino_final]
+                dist_plan_km = dist_alt
+
+        dist_despegue, dist_crucero, dist_aprox, dist_aterr = self._segmentos_distancia(dist_plan_km)
+
+        # Aproximacion
+        if es_exterior:
+            viento_aprx_label, factor_viento_aprx = "neutro", self.config.factor_viento_neutro
+        else:
+            viento_aprx_label, factor_viento_aprx = self._resolver_viento(destino_final, fase="aproximacion")
+        vel_aprox = self._velocidad_objetivo("aproximacion", tipo) * factor_viento_aprx
+        t_aprox = max(self.config.tmin_fase_aproximacion_min, self._tiempo_fase(dist_aprox, vel_aprox))
+        fuel_factor_aprx = self._fuel_factor_por_viento(viento_aprx_label)
+        fuel_aprx = self._combustible(t_aprox, tipo.consumo_des_l_h, fuel_factor_aprx)
+        combustible_consumido_l += fuel_aprx
+        inicio_fase = self.env.now
+        yield self.env.timeout(t_aprox)
+        self._registrar_log_fase(
+            vuelo.get("id_vuelo", ""),
+            "aproximacion",
+            origen,
+            destino,
+            destino_final,
+            inicio_fase,
+            self.env.now,
+            dist_aprox,
+            vel_aprox,
+            viento_aprx_label,
+            fuel_aprx,
+        )
+
+        # 5) Separacion en ruta (simplificada)
+        yield from self._esperar_separacion_ruta(origen, destino_final)
 
         # Intentar aterrizar o esperar en cola FIFO (solo si hay destino dentro de la red)
+        espera_cola = 0.0
         if not es_exterior and recurso_destino is not None:
             with recurso_destino.request() as req_dest:
+                espera_ini = self.env.now
                 yield req_dest
+                espera_cola = self.env.now - espera_ini
+                if espera_cola > 0:
+                    fuel_hold = self._combustible(
+                        espera_cola, tipo.consumo_cru_l_h, self.config.fuel_factor_neutro
+                    )
+                    combustible_consumido_l += fuel_hold
+                    self._registrar_log_fase(
+                        vuelo.get("id_vuelo", ""),
+                        "espera_cola_destino",
+                        origen,
+                        destino,
+                        destino_final,
+                        espera_ini,
+                        self.env.now,
+                        0.0,
+                        0.0,
+                        "neutro",
+                        fuel_hold,
+                        nota="espera en cola de pista",
+                    )
                 # Separacion pista en destino
                 yield from self._esperar_pista(destino_final)
+                viento_at_label, factor_viento_at = self._resolver_viento(destino_final, fase="aterrizaje")
+                vel_at = self._velocidad_objetivo("aterrizaje", tipo) * factor_viento_at
+                t_at = max(self.config.tmin_fase_aterrizaje_min, self._tiempo_fase(dist_aterr, vel_at))
+                fuel_factor_at = self._fuel_factor_por_viento(viento_at_label)
+                fuel_at = self._combustible(t_at, tipo.consumo_des_l_h, fuel_factor_at)
+                combustible_consumido_l += fuel_at
+                inicio_fase = self.env.now
+                yield self.env.timeout(t_at)
+                self._registrar_log_fase(
+                    vuelo.get("id_vuelo", ""),
+                    "aterrizaje",
+                    origen,
+                    destino,
+                    destino_final,
+                    inicio_fase,
+                    self.env.now,
+                    dist_aterr,
+                    vel_at,
+                    viento_at_label,
+                    fuel_at,
+                )
                 self._log_evento(destino_final, "aterrizaje", delta=1)
                 if self.config.tiempo_turnaround_min > 0:
                     yield self.env.timeout(self.config.tiempo_turnaround_min)
                 self._log_evento(destino_final, "salida_destino", delta=-1)
         else:
             destino_final = "EXTERIOR"
+            t_at = 0.0
+            vel_at = 0.0
+            viento_at_label = "neutro"
+            fuel_at = 0.0
+            espera_cola = 0.0
 
         llegada_real = self.env.now
         retraso_total = max(0.0, llegada_real - salida_prog) - float(vuelo.get("duracion_minutos", 0.0))
@@ -454,11 +659,35 @@ class SimulacionPrototipo2(SimulacionBase):
                 "retraso_por_redireccion_min": retraso_por_redir,
                 "combustible_consumido_l": combustible_consumido_l,
                 "tipo_aeronave": tipo.nombre,
+                "capacidad_combustible_l": tipo.capacidad_combustible_l,
+                "combustible_restante_est_l": max(0.0, tipo.capacidad_combustible_l - combustible_consumido_l),
+                "tiempo_total_min": max(0.0, llegada_real - salida_prog),
+                "tiempo_rodaje_min": t_rodaje,
+                "tiempo_despegue_min": t_despegue,
+                "tiempo_crucero_min": t_cr,
+                "tiempo_aproximacion_min": t_aprox,
+                "tiempo_aterrizaje_min": t_at,
+                "tiempo_espera_cola_min": espera_cola,
+                "dist_rodaje_km": self.config.dist_rodaje_km,
+                "dist_despegue_km": dist_despegue,
+                "dist_crucero_km": dist_crucero,
+                "dist_aproximacion_km": dist_aprox,
+                "dist_aterrizaje_km": dist_aterr,
+                "velocidad_crucero_kmh": vel_cr,
+                "velocidad_despegue_kmh": vel_despegue,
+                "velocidad_aproximacion_kmh": vel_aprox,
+                "velocidad_aterrizaje_kmh": vel_at,
+                "viento_despegue": viento_despegue_label,
+                "viento_crucero": viento_cr_label,
+                "viento_aproximacion": viento_aprx_label,
+                "viento_aterrizaje": viento_at_label,
+                "distancia_plan_km": dist_plan_original,
+                "distancia_ruta_km": dist_plan_km,
             }
         )
 
     def run(self) -> pd.DataFrame:
-        """Ejecuta la simulacion y devuelve DataFrames de vuelos y eventos."""
+        """Ejecuta la simulacion y devuelve DataFrames de vuelos, eventos y logs de fases."""
 
         for fila in self.plan_vuelos.itertuples(index=False):
             vuelo = fila._asdict()
@@ -479,4 +708,5 @@ class SimulacionPrototipo2(SimulacionBase):
         self.env.run()
         df_vuelos = pd.DataFrame(self._registros)
         df_eventos = pd.DataFrame(self._eventos)
-        return df_vuelos, df_eventos
+        df_logs = pd.DataFrame(self._logs_vuelos)
+        return df_vuelos, df_eventos, df_logs

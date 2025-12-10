@@ -33,15 +33,16 @@ _DEFAULTS = {
         "plan_csv": "salidas/planes/plan_diario_p2.csv",
         "resultados_csv": "salidas/resultados/resultados_p2.csv",
         "eventos_csv": "salidas/eventos/eventos_p2.csv",
+        "logs_csv": "salidas/eventos/logs_vuelos_p2.csv",
     },
     "vuelos": {
-        "total_vuelos_diarios": "400",
+        "total_vuelos_diarios": "180",
         "umbral_distancia_tipo_avion": "700.0",
         "hora_inicio": "6",
         "hora_fin": "22",
         "concentracion_horas_punta": "yes",
         "velocidad_crucero_kmh": "800.0",
-        "prob_destino_exterior": "0.05",
+        "prob_destino_exterior": "0.10",
         "dist_exterior_km": "1800.0",
     },
     "simulacion": {
@@ -68,7 +69,7 @@ _DEFAULTS = {
         "tmin_fase_asc_des_min": "5.0",
         "tmin_fase_crucero_min": "5.0",
         "plan_aleatorio_por_dia": "yes",
-        "dias": "1",
+        "dias": "5",
     },
 }
 
@@ -95,6 +96,7 @@ class AppConfig:
     grafo_pickle: Path
     plan_csv: Path
     resultados_csv: Path
+    logs_csv: Path
     eventos_csv: Path
     config_vuelos: ConfigVuelos
     config_simulacion: ConfigSimulacion
@@ -132,6 +134,7 @@ class AppConfig:
         plan_csv = _resolver_ruta(base, parser.get("salidas", "plan_csv"))
         resultados_csv = _resolver_ruta(base, parser.get("salidas", "resultados_csv"))
         eventos_csv = _resolver_ruta(base, parser.get("salidas", "eventos_csv"))
+        logs_csv = _resolver_ruta(base, parser.get("salidas", "logs_csv"))
 
         config_vuelos = ConfigVuelos(
             total_vuelos_diarios=parser.getint("vuelos", "total_vuelos_diarios"),
@@ -190,6 +193,7 @@ class AppConfig:
             grafo_pickle=grafo_pickle,
             plan_csv=plan_csv,
             resultados_csv=resultados_csv,
+            logs_csv=logs_csv,
             eventos_csv=eventos_csv,
             config_vuelos=config_vuelos,
             config_simulacion=config_sim,

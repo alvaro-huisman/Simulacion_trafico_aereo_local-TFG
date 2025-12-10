@@ -24,6 +24,7 @@ from .simulador_prototipo2 import (
     TIPO_CORTO_RADIO,
     TIPO_MEDIO_RADIO,
     TipoAeronave,
+    VELOCIDADES_REFERENCIA,
 )
 
 def dibujar_grafo_rutas(
@@ -121,15 +122,21 @@ def _posicion_en_minuto(
 
 def _fase_y_altitud(progreso: float, tipo: TipoAeronave) -> Tuple[str, float]:
     """Determina la fase y una altitud aproximada (ft) en funcion del progreso."""
-    if progreso <= 0.1:
-        fase = "ascenso"
-        alt = tipo.nivel_crucero_min_ft * (progreso / 0.1)
-    elif progreso >= 0.9:
-        fase = "descenso"
-        alt = tipo.nivel_crucero_min_ft * max(0.0, (1.0 - progreso) / 0.1)
-    else:
+    if progreso <= 0.05:
+        fase = "rodaje"
+        alt = 0.0
+    elif progreso <= 0.2:
+        fase = "despegue"
+        alt = tipo.nivel_crucero_min_ft * ((progreso - 0.05) / 0.15)
+    elif progreso <= 0.8:
         fase = "crucero"
         alt = (tipo.nivel_crucero_min_ft + tipo.nivel_crucero_max_ft) / 2.0
+    elif progreso <= 0.95:
+        fase = "aproximacion"
+        alt = tipo.nivel_crucero_min_ft * max(0.0, (0.95 - progreso) / 0.15)
+    else:
+        fase = "aterrizaje"
+        alt = 0.0
     return fase, alt
 
 
@@ -335,16 +342,26 @@ def visor_interactivo(
             tipo = TIPO_CORTO_RADIO if dist <= umbral else TIPO_MEDIO_RADIO
             progreso = (minuto - salida) / max(1e-6, (llegada - salida))
             fase, alt_ft = _fase_y_altitud(progreso, tipo)
+            # Rodaje debe permanecer en el aeropuerto de origen
+            if fase == "rodaje":
+                lon, lat = origen
+                lons[-1] = lon
+                lats[-1] = lat
             # Velocidad efectiva por fase con viento aproximado
-            if fase == "ascenso":
-                base_v = tipo.vel_asc_kmh
-                viento = viento_cache.get((getattr(fila, "origen"), "baja"), "neutro")
-            elif fase == "descenso":
-                base_v = tipo.vel_des_kmh
-                viento = viento_cache.get((getattr(fila, "destino"), "baja"), "neutro")
+            origen_id = getattr(fila, "origen")
+            destino_id = getattr(fila, "destino")
+            viento = "neutro"
+            if fase == "crucero":
+                clave = "crucero_corto" if tipo == TIPO_CORTO_RADIO else "crucero_medio"
             else:
-                base_v = tipo.vel_cru_kmh
-                viento = viento_cache.get((getattr(fila, "origen"), "alta"), "neutro")
+                clave = fase
+            base_v = sum(VELOCIDADES_REFERENCIA.get(clave, (tipo.vel_cru_kmh, tipo.vel_cru_kmh))) / 2.0
+            if fase in ("rodaje", "despegue"):
+                viento = viento_cache.get((origen_id, "baja"), "neutro")
+            elif fase == "crucero":
+                viento = viento_cache.get((origen_id, "alta"), "neutro")
+            elif fase in ("aproximacion", "aterrizaje"):
+                viento = viento_cache.get((destino_id, "baja"), "neutro")
             factor = 1.0
             if config_sim:
                 if viento == "a_favor":
@@ -354,26 +371,59 @@ def visor_interactivo(
                 else:
                     factor = config_sim.factor_viento_neutro
             vel_efectiva = base_v * factor
-            # Combustible estimado restante (aprox lineal por fase, ajustado por viento)
-            dur_total = (llegada - salida)
-            dur_asc = dur_total * 0.1
-            dur_cru = dur_total * 0.8
-            dur_des = dur_total * 0.1
+
+            # Combustible estimado restante (5 fases)
+            dur_total = max(1e-6, (llegada - salida))
+            dur_rod = dur_total * 0.05
+            dur_desp = dur_total * 0.15
+            dur_cru = dur_total * 0.6
+            dur_aprx = dur_total * 0.15
+            dur_at = dur_total * 0.05
+
+            def fuel_factor(lbl: str) -> float:
+                if not config_sim:
+                    return 1.0
+                if lbl == "a_favor":
+                    return config_sim.fuel_factor_a_favor
+                if lbl == "en_contra":
+                    return config_sim.fuel_factor_en_contra
+                return config_sim.fuel_factor_neutro
+
+            consumo_rodaje = tipo.consumo_asc_l_h * getattr(config_sim, "consumo_rodaje_factor", 0.35) if config_sim else tipo.consumo_asc_l_h * 0.35
+            viento_desp = viento_cache.get((origen_id, "baja"), "neutro")
+            viento_cru = viento_cache.get((origen_id, "alta"), "neutro")
+            viento_aprx = viento_cache.get((destino_id, "baja"), "neutro")
+            viento_at = viento_aprx
             total_fuel = (
-                (dur_asc / 60.0) * tipo.consumo_asc_l_h
-                + (dur_cru / 60.0) * tipo.consumo_cru_l_h
-                + (dur_des / 60.0) * tipo.consumo_des_l_h
+                (dur_rod / 60.0) * consumo_rodaje * fuel_factor("neutro")
+                + (dur_desp / 60.0) * tipo.consumo_asc_l_h * fuel_factor(viento_desp)
+                + (dur_cru / 60.0) * tipo.consumo_cru_l_h * fuel_factor(viento_cru)
+                + (dur_aprx / 60.0) * tipo.consumo_des_l_h * fuel_factor(viento_aprx)
+                + (dur_at / 60.0) * tipo.consumo_des_l_h * fuel_factor(viento_at)
             )
+            total_fuel = min(total_fuel, getattr(tipo, "capacidad_combustible_l", total_fuel))
             elapsed = minuto - salida
-            if elapsed <= dur_asc:
-                fuel_used = (elapsed / 60.0) * tipo.consumo_asc_l_h
-            elif elapsed <= dur_asc + dur_cru:
-                fuel_used = (dur_asc / 60.0) * tipo.consumo_asc_l_h
-                fuel_used += ((elapsed - dur_asc) / 60.0) * tipo.consumo_cru_l_h
+            fuel_used = 0.0
+            if elapsed <= dur_rod:
+                fuel_used = (elapsed / 60.0) * consumo_rodaje * fuel_factor("neutro")
+            elif elapsed <= dur_rod + dur_desp:
+                fuel_used = (dur_rod / 60.0) * consumo_rodaje * fuel_factor("neutro")
+                fuel_used += ((elapsed - dur_rod) / 60.0) * tipo.consumo_asc_l_h * fuel_factor(viento_desp)
+            elif elapsed <= dur_rod + dur_desp + dur_cru:
+                fuel_used = (dur_rod / 60.0) * consumo_rodaje * fuel_factor("neutro")
+                fuel_used += (dur_desp / 60.0) * tipo.consumo_asc_l_h * fuel_factor(viento_desp)
+                fuel_used += ((elapsed - dur_rod - dur_desp) / 60.0) * tipo.consumo_cru_l_h * fuel_factor(viento_cru)
+            elif elapsed <= dur_rod + dur_desp + dur_cru + dur_aprx:
+                fuel_used = (dur_rod / 60.0) * consumo_rodaje * fuel_factor("neutro")
+                fuel_used += (dur_desp / 60.0) * tipo.consumo_asc_l_h * fuel_factor(viento_desp)
+                fuel_used += (dur_cru / 60.0) * tipo.consumo_cru_l_h * fuel_factor(viento_cru)
+                fuel_used += ((elapsed - dur_rod - dur_desp - dur_cru) / 60.0) * tipo.consumo_des_l_h * fuel_factor(viento_aprx)
             else:
-                fuel_used = (dur_asc / 60.0) * tipo.consumo_asc_l_h
-                fuel_used += (dur_cru / 60.0) * tipo.consumo_cru_l_h
-                fuel_used += ((elapsed - dur_asc - dur_cru) / 60.0) * tipo.consumo_des_l_h
+                fuel_used = (dur_rod / 60.0) * consumo_rodaje * fuel_factor("neutro")
+                fuel_used += (dur_desp / 60.0) * tipo.consumo_asc_l_h * fuel_factor(viento_desp)
+                fuel_used += (dur_cru / 60.0) * tipo.consumo_cru_l_h * fuel_factor(viento_cru)
+                fuel_used += (dur_aprx / 60.0) * tipo.consumo_des_l_h * fuel_factor(viento_aprx)
+                fuel_used += ((elapsed - dur_rod - dur_desp - dur_cru - dur_aprx) / 60.0) * tipo.consumo_des_l_h * fuel_factor(viento_at)
             fuel_rest = max(0.0, total_fuel - fuel_used)
             vuelos_visibles.append(
                 {

@@ -17,15 +17,16 @@ grafo_pickle = salidas/grafo/grafo_p2.gpickle
 plan_csv = salidas/planes/plan_diario_p2.csv
 resultados_csv = salidas/resultados/resultados_p2.csv
 eventos_csv = salidas/eventos/eventos_p2.csv
+logs_csv = salidas/eventos/logs_vuelos_p2.csv
 
 [vuelos]
-total_vuelos_diarios = 600
+total_vuelos_diarios = 180
 umbral_distancia_tipo_avion = 700.0
 hora_inicio = 6
 hora_fin = 23
 concentracion_horas_punta = yes
 velocidad_crucero_kmh = 800.0
-prob_destino_exterior = 0.05
+prob_destino_exterior = 0.10
 dist_exterior_km = 1800.0
 
 [simulacion]
@@ -52,4 +53,4 @@ exterior_estancia_max = 40
 tmin_fase_asc_des_min = 5.0
 tmin_fase_crucero_min = 5.0
 plan_aleatorio_por_dia = yes
-dias = 3
+dias = 5
