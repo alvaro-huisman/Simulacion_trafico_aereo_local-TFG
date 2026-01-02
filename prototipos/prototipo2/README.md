@@ -65,7 +65,7 @@ La simulacion limpia por defecto el contenido previo de `prototipos/prototipo2/s
   - `umbral_distancia_tipo_avion`: corta entre avion corto/medio radio.
   - `velocidad_crucero_kmh`: velocidad de referencia para estimar duraciones.
   - `concentracion_horas_punta`: si `yes`, se agrupan salidas en horas punta.
-  - `prob_destino_exterior`: % de vuelos que van al nodo externo `EXTERIOR` (consumen capacidad en origen); por defecto 0.10 para dar mas peso al trafico exterior.
+  - `prob_destino_exterior`: % base de vuelos que van al nodo externo `EXTERIOR` (consumen capacidad en origen); se pondera por el trafico del aeropuerto de origen para que solo los hubs generen mas exterior (por defecto base 0.10).
   - `dist_exterior_km`: distancia equivalente para esos vuelos exteriores.
 - **Datos y viento**:
   - `capacidad_min` / `capacidad_max`: asignacion de capacidad si no viene en el CSV.
@@ -90,7 +90,16 @@ La simulacion limpia por defecto el contenido previo de `prototipos/prototipo2/s
   - Ruido exterior en hubs: `exterior_top_n`, `exterior_ruido_min/max`, `exterior_intervalo_min/max`, `exterior_estancia_min/max`.
   - `plan_aleatorio_por_dia`: si `yes`, genera un plan distinto para cada dia cuando `dias > 1`; si `no`, reutiliza el plan desplazado.
   - `dias`: numero de dias consecutivos a simular (la ocupacion final de un dia se usa como inicial del siguiente).
-  - Nota: la configuracion por defecto busca un equilibrio razonable (capacidad moderada, ~180 vuelos diarios, umbral de espera 30 min, 5 dias y algo mas de trafico exterior). Sube/baja estas cifras segun quieras mas/menos congestion y redirecciones.
+  - Nota: la configuracion por defecto busca un equilibrio razonable (capacidad moderada, ~180 vuelos diarios, umbral de espera 30 min, 5 dias y algo mas de trafico exterior). Las capacidades se escalan con los pasajeros de los flujos si el CSV no trae capacidad, y el exterior se concentra en los hubs gracias a esa ponderacion. Sube/baja estas cifras segun quieras mas/menos congestion y redirecciones.
+
+## Coherencia con los flujos (hubs vs aeropuertos pequenos)
+
+- Pesos de rutas `w_ij` y `pasajeros_anuales` se leen de los flujos; el plan reparte vuelos segun esos pesos, dando mas vuelos a las rutas con mas pasajeros.
+- Tráfico por aeropuerto se calcula sumando pasajeros de sus aristas (sin EXTERIOR); se usa para:
+  - Ocupacion inicial y seleccion de hubs para ruido exterior.
+  - Probabilidad de vuelos exteriores (hubs generan mas exterior).
+  - Capacidades: si el CSV no trae columna `capacidad`, se asigna proporcionalmente al trafico (entre `capacidad_min` y `capacidad_max` del config).
+- Redireccion y separacion impiden superar la capacidad de los aeropuertos; la ocupacion se topea en la capacidad para evitar sobreaforos.
 
 **Visor multidia**: usa el valor de `dias` del config (o el maximo `dia` del CSV si existe). Al abrir, veras un cuadro de texto para elegir dia (1..N) y un slider de minutos dentro del dia para inspeccionar todos los dias simulados. Los eventos de ocupacion se emplean para mostrar plazas ocupadas/total por aeropuerto en cada instante. El visor carga `plan_usado_p2.csv` si existe; en caso contrario, usa el plan diario desplazado.
 

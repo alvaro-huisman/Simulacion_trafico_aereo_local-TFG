@@ -41,7 +41,7 @@ def _parsear_pasajeros(valor: object) -> int:
 def leer_flujos_ministerio(path_csv: str | Path) -> pd.DataFrame:
     """Lee el CSV de flujos del Ministerio y devuelve un DataFrame normalizado.
 
-    Columnas de salida: ``['origen_id', 'destino_id', 'pasajeros_anuales']``.
+    Columnas de salida: ``['origen_id', 'destino_id', 'pasajeros_anuales', 'origen_nombre', 'destino_nombre']``.
 
     - Extrae codigos IATA a partir de las columnas ``Aeropuerto_Origen`` y ``Aeropuerto_Destino``.
     - Limpia y convierte ``Pasajeros`` a entero (tolerando formato espanol).
@@ -51,14 +51,16 @@ def leer_flujos_ministerio(path_csv: str | Path) -> pd.DataFrame:
     ruta = Path(path_csv)
     df = pd.read_csv(ruta, dtype=str, keep_default_na=False)
 
-    origen_codigo, _ = zip(*df.get(COL_ORIGEN, []).map(_extraer_codigo_nombre))
-    destino_codigo, _ = zip(*df.get(COL_DESTINO, []).map(_extraer_codigo_nombre))
+    origen_codigo, origen_nombre = zip(*df.get(COL_ORIGEN, []).map(_extraer_codigo_nombre))
+    destino_codigo, destino_nombre = zip(*df.get(COL_DESTINO, []).map(_extraer_codigo_nombre))
 
     df_norm = pd.DataFrame(
         {
             "origen_id": origen_codigo,
             "destino_id": destino_codigo,
             "pasajeros_anuales": df.get(COL_PASAJEROS, []).map(_parsear_pasajeros),
+            "origen_nombre": origen_nombre,
+            "destino_nombre": destino_nombre,
         }
     )
 

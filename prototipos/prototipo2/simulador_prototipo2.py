@@ -153,15 +153,27 @@ class SimulacionPrototipo2(SimulacionBase):
 
     def _calcular_trafico_por_aeropuerto(self) -> Dict[str, float]:
         """Suma pesos de pasajeros por nodo para priorizar hubs."""
-        traf: Dict[str, float] = {n: 0.0 for n in self.grafo.nodes}
+        traf: Dict[str, float] = {n: 0.0 for n in self.grafo.nodes if str(n).upper() != "EXTERIOR"}
+        total_w = 0.0
         for u, v, datos in self.grafo.edges(data=True):
-            peso = float(datos.get("pasajeros_anuales", datos.get("w_ij", 0.0)))
-            traf[u] = traf.get(u, 0.0) + peso
-            traf[v] = traf.get(v, 0.0) + peso
+            if str(u).upper() == "EXTERIOR" or str(v).upper() == "EXTERIOR":
+                continue
+            peso_pax = float(datos.get("pasajeros_anuales", 0.0))
+            peso_w = float(datos.get("w_ij", 0.0))
+            if peso_pax > 0:
+                peso = peso_pax
+            else:
+                peso = peso_w
+            total_w += max(peso, 0.0)
+            traf[u] = traf.get(u, 0.0) + max(peso, 0.0)
+            traf[v] = traf.get(v, 0.0) + max(peso, 0.0)
         # fallback si todo es 0
         if all(v == 0.0 for v in traf.values()):
             for n in traf:
                 traf[n] = float(self.grafo.degree[n])
+        # Normalizar si venimos de w_ij (suma 1) para dar proporciones comparables
+        if total_w > 0 and all(val <= 1.0 for val in traf.values()):
+            traf = {k: v / max(1e-9, sum(traf.values())) for k, v in traf.items()}
         return traf
 
     def _inicializar_ocupacion(self) -> None:
@@ -243,14 +255,23 @@ class SimulacionPrototipo2(SimulacionBase):
         """Actualiza ocupacion y guarda evento para visualizacion posterior."""
         if aer_id not in self._ocupacion:
             return
-        self._ocupacion[aer_id] = max(0, self._ocupacion.get(aer_id, 0) + delta)
+        ocup_prev = self._ocupacion.get(aer_id, 0)
+        capacidad = self._recursos[aer_id].capacity
+        # Evitar sobrepasar la capacidad: si ya está lleno, no incrementamos
+        if delta > 0 and ocup_prev >= capacidad:
+            delta_aplicado = 0
+            evento = f"{evento}_cap_llena"
+        else:
+            delta_aplicado = delta
+        nueva_ocup = max(0, min(capacidad, ocup_prev + delta_aplicado))
+        self._ocupacion[aer_id] = nueva_ocup
         self._eventos.append(
             {
                 "minuto": self.env.now,
                 "aeropuerto": aer_id,
                 "evento": evento,
                 "ocupacion": self._ocupacion[aer_id],
-                "capacidad": self._recursos[aer_id].capacity,
+                "capacidad": capacidad,
             }
         )
 
@@ -295,6 +316,16 @@ class SimulacionPrototipo2(SimulacionBase):
         if self.env.now < ultimo + min_sep:
             yield self.env.timeout((ultimo + min_sep) - self.env.now)
         self._ultimo_evento_pista[aer_id] = self.env.now
+
+    def _tiempo_espera_siguiente_salida(self, aer_id: str, ahora: float) -> float:
+        """Estimacion simple: tiempo hasta la siguiente salida programada desde aer_id."""
+        if self.plan_vuelos is None or "origen" not in self.plan_vuelos.columns or "minuto_salida" not in self.plan_vuelos.columns:
+            return 0.0
+        mask = self.plan_vuelos["origen"].astype(str).eq(str(aer_id)) & (self.plan_vuelos["minuto_salida"] >= ahora)
+        if not mask.any():
+            return 0.0
+        prox = float(self.plan_vuelos.loc[mask, "minuto_salida"].min())
+        return max(0.0, prox - ahora)
 
     def _tiempo_fase(self, distancia_km: float, velocidad_kmh: float) -> float:
         if velocidad_kmh <= 0:
@@ -537,7 +568,12 @@ class SimulacionPrototipo2(SimulacionBase):
         if not es_exterior and recurso_destino is not None:
             cola_actual = len(recurso_destino.queue)
             capacidad_dest = recurso_destino.capacity
-            tiempo_espera_estimado = (cola_actual / max(1, capacidad_dest)) * self.config.paso_minutos
+            ocup_dest = recurso_destino.count
+            espera_cola = (cola_actual / max(1, capacidad_dest)) * self.config.separar_minutos
+            espera_por_salida = 0.0
+            if ocup_dest >= capacidad_dest:
+                espera_por_salida = self._tiempo_espera_siguiente_salida(destino, self.env.now)
+            tiempo_espera_estimado = espera_cola + espera_por_salida
 
         if (not es_exterior) and tiempo_espera_estimado > self.config.T_umbral_espera:
             destino_alternativo, mejor_retraso, redir, dist_alt = self._redirigir_si_conviene(

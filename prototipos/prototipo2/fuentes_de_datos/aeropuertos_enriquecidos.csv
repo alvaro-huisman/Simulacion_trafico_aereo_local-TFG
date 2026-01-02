@@ -1,49 +1,49 @@
 X,Y,OBJECTID,Texto,lon,lat,nombre,id,capacidad,viento_baja_cota,viento_alta_cota
--674892.017900001,4403459.5715,1,Aeropuerto de Jerez,-6.0626581480983655,36.74382770476361,Aeropuerto de Jerez,A1,11,neutro,neutro
--960741.881000001,5194854.3614,2,Aeropuerto de Vigo,-8.630491157960392,42.22573967389135,Aeropuerto de Vigo,A2,5,a_favor,neutro
--759323.6655,4705905.0444,3,Aeropuerto de Badajoz,-6.821120543123089,38.88984479123348,Aeropuerto de Badajoz,A3,4,a_favor,neutro
--420633.237799998,4465180.0043,4,Aeropuerto de Granada - Jaén F.G.L.,-3.7786126652441947,37.18682592765272,Aeropuerto de Granada - Jaén F.G.L.,A4,5,en_contra,neutro
--263964.537099998,4417493.3061,5,Aeropuerto de Almería,-2.371233781424626,36.84478113166001,Aeropuerto de Almería,A5,4,a_favor,en_contra
--612586.170899998,5005081.084,6,Aeropuerto de Salamanca ,-5.5029552015972145,40.95075727409609,Aeropuerto de Salamanca ,A6,5,a_favor,neutro
-152804.814800002,4703689.522,7,Aeropuerto de Ibiza,1.3726690062189466,38.87435199918434,Aeropuerto de Ibiza,A7,5,a_favor,neutro
--1514503.916,3369416.5773,8,Aeropuerto de Lanzarote,-13.605020156016677,28.951044549042532,Aeropuerto de Lanzarote,A8,9,en_contra,a_favor
--1976327.6403,3327633.1163,9,Aeropuerto de La Palma,-17.75365325709358,28.622083606031985,Aeropuerto de La Palma,A9,7,a_favor,a_favor
--1819810.8122,3310362.699,10,Aeropuerto de Tenerife Norte ,-16.3476386680522,28.485811273199648,Aeropuerto de Tenerife Norte ,A10,4,en_contra,neutro
--1916027.703,3252903.2965,11,Aeropuerto de La Gomera,-17.21196970401319,28.031162976991364,Aeropuerto de La Gomera,A11,4,neutro,neutro
--1845154.6577,3254709.968,12,Aeropuerto de Tenerife Sur ,-16.57530630576234,28.04548776886532,Aeropuerto de Tenerife Sur ,A12,4,en_contra,a_favor
--1712883.5016,3240291.2707,13,Aeropuerto de Gran Canaria,-15.387094294034448,27.931111276904268,Aeropuerto de Gran Canaria,A13,9,en_contra,neutro
--1991166.6152,3225649.4689,14,Aeropuerto de El Hierro,-17.886954036626936,27.814841002331857,Aeropuerto de El Hierro,A14,11,neutro,neutro
--671547.999200001,5397939.1202,15,Aeropuerto de Asturias,-6.03261831701245,43.56219615772018,Aeropuerto de Asturias,A15,11,a_favor,neutro
--539705.187600002,5117491.2276,16,Aeropuerto de Valladolid,-4.848254189396754,41.70902005501443,Aeropuerto de Valladolid,A16,6,a_favor,neutro
--425553.9036,5377062.1386,17,Santander-Seve Ballesteros,-3.8228157582060547,43.426145594687604,Santander-Seve Ballesteros,A17,5,en_contra,en_contra
--199440.652600002,5366379.3011,18,Aeropuerto de San Sebastián,-1.7916058650535356,43.35640942287211,Aeropuerto de San Sebastián,A18,6,neutro,en_contra
--323756.921599999,5358130.3614,19,Aeropuerto de Bilbao,-2.9083579101276475,43.30250652124238,Aeropuerto de Bilbao,A19,5,neutro,en_contra
--539559.672400001,4557393.1215,20,Aeropuerto de Córdoba,-4.846947004114427,37.84386874674621,Aeropuerto de Córdoba,A20,4,en_contra,neutro
--932579.217799999,5358162.678,21,Aeropuerto de A Coruña,-8.377501650019672,43.30271778820441,Aeropuerto de A Coruña,A21,12,en_contra,neutro
--398113.992699999,4937709.7519,22,Aeropuerto de Adolfo Suárez Madrid - Barajas,-3.5763188446425667,40.49207968995951,Aeropuerto de Adolfo Suárez Madrid - Barajas,A22,11,neutro,neutro
--207406.421300001,4714459.7084,23,Aeropuerto de Albacete,-1.8631635827832358,38.94963447166906,Aeropuerto de Albacete,A23,7,en_contra,a_favor
--605664.451499999,4318359.7228,24,Helipuerto de Algeciras,-5.440776338303157,36.1288084587096,Helipuerto de Algeciras,A24,5,en_contra,a_favor
--62711.6697999984,4619882.5203,25,Aeropuerto de Alicante - Elche,-0.5633485147399517,38.285826141322985,Aeropuerto de Alicante - Elche,A25,12,en_contra,neutro
-232103.953000002,5056144.904,26,Aeropuerto de Barcelona - El prat,2.0850252848446083,41.296302239050675,Aeropuerto de Barcelona - El prat,A26,11,a_favor,en_contra
--403164.1558,5214205.0463,27,Aeropuerto de Burgos,-3.6216852316428403,42.35433013921938,Aeropuerto de Burgos,A27,5,neutro,a_favor
--590686.955899999,4285826.1604,28,Helipuerto de Ceuta,-5.306231206150028,35.89240218105015,Helipuerto de Ceuta,A28,5,neutro,neutro
--1543578.1603,3305899.7114,29,Aeropuerto de Fuerteventura,-13.866198536305827,28.450567386653894,Aeropuerto de Fuerteventura,A29,12,en_contra,neutro
-307662.1587,5146151.2147,30,Aeropuerto de Girona - Costa Brava,2.763776195054158,41.90093296387455,Aeropuerto de Girona - Costa Brava,A30,4,a_favor,a_favor
--35358.7397999987,5172463.9101,31,Aeropuerto de Huesca Pirineos,-0.3176329638954406,42.07662161918124,Aeropuerto de Huesca Pirineos,A31,8,neutro,neutro
--629451.971500002,5249746.4755,32,Aeropuerto de León,-5.654463266176172,42.58982833081431,Aeropuerto de León,A32,12,en_contra,en_contra
--257958.138300002,5230075.0988,33,Aeropuerto de Logroño - Agoncillo,-2.317277382979091,42.459594905136136,Aeropuerto de Logroño - Agoncillo,A33,5,en_contra,neutro
--421355.7764,4919947.9561,34,Aeropuerto de Madrid - Cuatro vientos,-3.785103339921675,40.370627641821606,Aeropuerto de Madrid - Cuatro vientos,A34,8,a_favor,a_favor
--500570.3532,4394084.0247,35,Aeropuerto de Málaga - Costa del Sol,-4.496699990566672,36.676309434933835,Aeropuerto de Málaga - Costa del Sol,A35,11,neutro,a_favor
--329053.1668,4201892.6734,36,Aeropuerto de Melilla,-2.955934890243703,35.27923179194207,Aeropuerto de Melilla,A36,9,en_contra,en_contra
-469922.521000002,4846268.9096,37,Aeropuerto de Menorca,4.221385829662785,39.864483644680114,Aeropuerto de Menorca,A37,8,neutro,a_favor
--90946.3471999988,4547418.2036,38,Aeropuerto de Murcia - San Javier,-0.8169849372459955,37.77307408002183,Aeropuerto de Murcia - San Javier,A38,7,neutro,neutro
-304105.374200001,4800744.3772,39,Aeropuerto de Palma de Mallorca,2.731825056267473,39.54986840814107,Aeropuerto de Palma de Mallorca,A39,7,a_favor,neutro
--182872.765700001,5276286.8826,40,Aeropuerto de Pamplona,-1.6427740047751909,42.76510750672916,Aeropuerto de Pamplona,A40,11,neutro,en_contra
-128964.191,5033973.1909,41,Aeropuerto de Reus,1.1585050387940923,41.14649145328348,Aeropuerto de Reus,A41,12,en_contra,a_favor
-234304.333000001,5089495.0183,42,Aeropuerto de Sabadell,2.1047916346933087,41.52099711478107,Aeropuerto de Sabadell,A42,4,neutro,a_favor
--937083.1327,5296371.4663,43,Aeropuerto de Santiago,-8.417961005950117,42.89742217369017,Aeropuerto de Santiago,A43,12,a_favor,a_favor
--656631.7819,4497777.0086,44,Aeropuerto de Sevilla,-5.898623657194061,37.41974902376826,Aeropuerto de Sevilla,A44,5,a_favor,a_favor
-301149.739100002,4808197.9795,45,Aeropuerto de Son Bonet,2.7052741344213804,39.60147765923698,Aeropuerto de Son Bonet,A45,4,a_favor,en_contra
--53491.3762000017,4792244.6203,46,Aeropuerto de Valencia,-0.4805212080904873,39.49096862776998,Aeropuerto de Valencia,A46,9,neutro,neutro
--304031.1358,5293596.5813,47,Aeropuerto de Vitoria,-2.731158161373578,42.879158451270776,Aeropuerto de Vitoria,A47,6,neutro,a_favor
--118037.492699999,5111756.4276,48,Aeropuerto de Zaragoza,-1.0603488379155552,41.67054969819289,Aeropuerto de Zaragoza,A48,11,en_contra,neutro
+-674892.017900001,4403459.5715,1,Aeropuerto de Jerez,-6.0626581480983655,36.74382770476361,Aeropuerto de Jerez,XRY,4,a_favor,neutro
+-960741.881000001,5194854.3614,2,Aeropuerto de Vigo,-8.630491157960392,42.22573967389135,Aeropuerto de Vigo,VGO,5,neutro,en_contra
+-759323.6655,4705905.0444,3,Aeropuerto de Badajoz,-6.821120543123089,38.88984479123348,Aeropuerto de Badajoz,BJZ,4,a_favor,neutro
+-420633.237799998,4465180.0043,4,Aeropuerto de Granada - Jaén F.G.L.,-3.7786126652441947,37.18682592765272,Aeropuerto de Granada - Jaén F.G.L.,GRX,5,en_contra,neutro
+-263964.537099998,4417493.3061,5,Aeropuerto de Almería,-2.371233781424626,36.84478113166001,Aeropuerto de Almería,LEI,4,neutro,a_favor
+-612586.170899998,5005081.084,6,Aeropuerto de Salamanca ,-5.5029552015972145,40.95075727409609,Aeropuerto de Salamanca ,SLM,4,a_favor,neutro
+152804.814800002,4703689.522,7,Aeropuerto de Ibiza,1.3726690062189466,38.87435199918434,Aeropuerto de Ibiza,IBZ,7,neutro,en_contra
+-1514503.916,3369416.5773,8,Aeropuerto de Lanzarote,-13.605020156016677,28.951044549042532,Aeropuerto de Lanzarote,ACE,6,a_favor,neutro
+-1976327.6403,3327633.1163,9,Aeropuerto de La Palma,-17.75365325709358,28.622083606031985,Aeropuerto de La Palma,SPC,5,neutro,a_favor
+-1819810.8122,3310362.699,10,Aeropuerto de Tenerife Norte ,-16.3476386680522,28.485811273199648,Aeropuerto de Tenerife Norte ,TFN,9,neutro,a_favor
+-1916027.703,3252903.2965,11,Aeropuerto de La Gomera,-17.21196970401319,28.031162976991364,Aeropuerto de La Gomera,GMZ,4,neutro,a_favor
+-1845154.6577,3254709.968,12,Aeropuerto de Tenerife Sur ,-16.57530630576234,28.04548776886532,Aeropuerto de Tenerife Sur ,TFS,5,a_favor,neutro
+-1712883.5016,3240291.2707,13,Aeropuerto de Gran Canaria,-15.387094294034448,27.931111276904268,Aeropuerto de Gran Canaria,LPA,10,en_contra,neutro
+-1991166.6152,3225649.4689,14,Aeropuerto de El Hierro,-17.886954036626936,27.814841002331857,Aeropuerto de El Hierro,VDE,4,neutro,en_contra
+-671547.999200001,5397939.1202,15,Aeropuerto de Asturias,-6.03261831701245,43.56219615772018,Aeropuerto de Asturias,OVD,5,neutro,neutro
+-539705.187600002,5117491.2276,16,Aeropuerto de Valladolid,-4.848254189396754,41.70902005501443,Aeropuerto de Valladolid,VLL,4,a_favor,neutro
+-425553.9036,5377062.1386,17,Santander-Seve Ballesteros,-3.8228157582060547,43.426145594687604,Santander-Seve Ballesteros,SDR,4,a_favor,neutro
+-199440.652600002,5366379.3011,18,Aeropuerto de San Sebastián,-1.7916058650535356,43.35640942287211,Aeropuerto de San Sebastián,EAS,4,en_contra,neutro
+-323756.921599999,5358130.3614,19,Aeropuerto de Bilbao,-2.9083579101276475,43.30250652124238,Aeropuerto de Bilbao,BIO,7,a_favor,en_contra
+-539559.672400001,4557393.1215,20,Aeropuerto de Córdoba,-4.846947004114427,37.84386874674621,Aeropuerto de Córdoba,ODB,4,a_favor,neutro
+-932579.217799999,5358162.678,21,Aeropuerto de A Coruña,-8.377501650019672,43.30271778820441,Aeropuerto de A Coruña,LCG,5,a_favor,neutro
+-398113.992699999,4937709.7519,22,Aeropuerto de Adolfo Suárez Madrid - Barajas,-3.5763188446425667,40.49207968995951,Aeropuerto de Adolfo Suárez Madrid - Barajas,MAD,18,en_contra,a_favor
+-207406.421300001,4714459.7084,23,Aeropuerto de Albacete,-1.8631635827832358,38.94963447166906,Aeropuerto de Albacete,ABC,4,a_favor,a_favor
+-605664.451499999,4318359.7228,24,Helipuerto de Algeciras,-5.440776338303157,36.1288084587096,Helipuerto de Algeciras,AEI,4,en_contra,neutro
+-62711.6697999984,4619882.5203,25,Aeropuerto de Alicante - Elche,-0.5633485147399517,38.285826141322985,Aeropuerto de Alicante - Elche,ALC,6,neutro,neutro
+232103.953000002,5056144.904,26,Aeropuerto de Barcelona - El prat,2.0850252848446083,41.296302239050675,Aeropuerto de Barcelona - El prat,BCN,15,en_contra,a_favor
+-403164.1558,5214205.0463,27,Aeropuerto de Burgos,-3.6216852316428403,42.35433013921938,Aeropuerto de Burgos,RGS,4,en_contra,neutro
+-590686.955899999,4285826.1604,28,Helipuerto de Ceuta,-5.306231206150028,35.89240218105015,Helipuerto de Ceuta,JCU,4,neutro,neutro
+-1543578.1603,3305899.7114,29,Aeropuerto de Fuerteventura,-13.866198536305827,28.450567386653894,Aeropuerto de Fuerteventura,FUE,6,a_favor,neutro
+307662.1587,5146151.2147,30,Aeropuerto de Girona - Costa Brava,2.763776195054158,41.90093296387455,Aeropuerto de Girona - Costa Brava,GRO,4,a_favor,neutro
+-35358.7397999987,5172463.9101,31,Aeropuerto de Huesca Pirineos,-0.3176329638954406,42.07662161918124,Aeropuerto de Huesca Pirineos,HSK,4,en_contra,en_contra
+-629451.971500002,5249746.4755,32,Aeropuerto de León,-5.654463266176172,42.58982833081431,Aeropuerto de León,LEN,4,neutro,en_contra
+-257958.138300002,5230075.0988,33,Aeropuerto de Logroño - Agoncillo,-2.317277382979091,42.459594905136136,Aeropuerto de Logroño - Agoncillo,RJL,4,neutro,en_contra
+-421355.7764,4919947.9561,34,Aeropuerto de Madrid - Cuatro vientos,-3.785103339921675,40.370627641821606,Aeropuerto de Madrid - Cuatro vientos,MCV,4,en_contra,neutro
+-500570.3532,4394084.0247,35,Aeropuerto de Málaga - Costa del Sol,-4.496699990566672,36.676309434933835,Aeropuerto de Málaga - Costa del Sol,AGP,7,en_contra,neutro
+-329053.1668,4201892.6734,36,Aeropuerto de Melilla,-2.955934890243703,35.27923179194207,Aeropuerto de Melilla,MLN,4,neutro,neutro
+469922.521000002,4846268.9096,37,Aeropuerto de Menorca,4.221385829662785,39.864483644680114,Aeropuerto de Menorca,MAH,6,en_contra,a_favor
+-90946.3471999988,4547418.2036,38,Aeropuerto de Murcia - San Javier,-0.8169849372459955,37.77307408002183,Aeropuerto de Murcia - San Javier,MJV,4,en_contra,a_favor
+304105.374200001,4800744.3772,39,Aeropuerto de Palma de Mallorca,2.731825056267473,39.54986840814107,Aeropuerto de Palma de Mallorca,PMI,11,en_contra,neutro
+-182872.765700001,5276286.8826,40,Aeropuerto de Pamplona,-1.6427740047751909,42.76510750672916,Aeropuerto de Pamplona,PNA,4,a_favor,en_contra
+128964.191,5033973.1909,41,Aeropuerto de Reus,1.1585050387940923,41.14649145328348,Aeropuerto de Reus,REU,4,neutro,a_favor
+234304.333000001,5089495.0183,42,Aeropuerto de Sabadell,2.1047916346933087,41.52099711478107,Aeropuerto de Sabadell,QSA,4,neutro,neutro
+-937083.1327,5296371.4663,43,Aeropuerto de Santiago,-8.417961005950117,42.89742217369017,Aeropuerto de Santiago,SCQ,6,en_contra,neutro
+-656631.7819,4497777.0086,44,Aeropuerto de Sevilla,-5.898623657194061,37.41974902376826,Aeropuerto de Sevilla,SVQ,8,a_favor,a_favor
+301149.739100002,4808197.9795,45,Aeropuerto de Son Bonet,2.7052741344213804,39.60147765923698,Aeropuerto de Son Bonet,SBO,4,neutro,neutro
+-53491.3762000017,4792244.6203,46,Aeropuerto de Valencia,-0.4805212080904873,39.49096862776998,Aeropuerto de Valencia,VLC,6,en_contra,en_contra
+-304031.1358,5293596.5813,47,Aeropuerto de Vitoria,-2.731158161373578,42.879158451270776,Aeropuerto de Vitoria,VIT,4,en_contra,neutro
+-118037.492699999,5111756.4276,48,Aeropuerto de Zaragoza,-1.0603488379155552,41.67054969819289,Aeropuerto de Zaragoza,ZAZ,4,a_favor,a_favor

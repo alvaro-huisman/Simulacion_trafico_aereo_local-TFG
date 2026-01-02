@@ -35,6 +35,7 @@ def _resolver_pesos_rutas(
     """Obtiene la lista de aristas y un vector de pesos normalizados."""
     aristas: List[Tuple[str, str]] = []
     pesos: List[float] = []
+    # Trafico por nodo para favorecer hubs en exterior (se usa mas adelante)
 
     for u, v, datos in grafo.edges(data=True):
         w_base = float(datos.get("w_ij", 0.0))
@@ -54,6 +55,17 @@ def _resolver_pesos_rutas(
     pesos_np = np.array(pesos, dtype=float)
     pesos_np = pesos_np / pesos_np.sum()
     return aristas, pesos_np
+
+
+def _trafico_por_nodo(grafo: nx.Graph) -> Dict[str, float]:
+    traf: Dict[str, float] = {}
+    for u, v, datos in grafo.edges(data=True):
+        if str(u).upper() == "EXTERIOR" or str(v).upper() == "EXTERIOR":
+            continue
+        peso = float(datos.get("pasajeros_anuales", datos.get("w_ij", 0.0)))
+        traf[u] = traf.get(u, 0.0) + max(0.0, peso)
+        traf[v] = traf.get(v, 0.0) + max(0.0, peso)
+    return traf
 
 
 def _duracion_minutos(dist_km: float, velocidad_kmh: float) -> int:
@@ -121,6 +133,8 @@ def generar_plan_diario(
     np_rng = np.random.default_rng(config.seed)
 
     aristas, pesos = _resolver_pesos_rutas(grafo, config.pesos_manual)
+    traf_nodo = _trafico_por_nodo(grafo)
+    traf_max = max(traf_nodo.values()) if traf_nodo else 1.0
     vuelos_por_ruta = _asignar_vuelos_por_ruta(config.total_vuelos_diarios, pesos, np_rng)
 
     horarios = _generar_minutos_salida(
@@ -152,7 +166,10 @@ def generar_plan_diario(
             es_exterior = False
             dist_flight = dist
             destino_plan = destino
-            if rng.random() < max(0.0, min(1.0, config.prob_destino_exterior)):
+            # Prob exterior ponderada por trafico del aeropuerto origen
+            traf_origen = traf_nodo.get(origen, 0.0)
+            p_ext = max(0.0, min(1.0, config.prob_destino_exterior * (traf_origen / max(1e-9, traf_max))))
+            if rng.random() < p_ext:
                 es_exterior = True
                 destino_plan = "EXTERIOR"
                 dist_flight = config.dist_exterior_km

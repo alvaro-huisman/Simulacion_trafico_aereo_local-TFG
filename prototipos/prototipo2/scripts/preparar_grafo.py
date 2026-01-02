@@ -42,7 +42,7 @@ def _limpiar_nombre(texto: str) -> str:
         return ""
     texto_norm = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
     texto_norm = texto_norm.lower()
-    for pref in ["aeropuerto", "de", "del", "-", "_", ".", ","]:
+    for pref in ["aeropuerto", "de", "del", "-", "_", ".", ",", "(", ")", ":"]:
         texto_norm = texto_norm.replace(pref, " ")
     return " ".join(texto_norm.split())
 
@@ -66,6 +66,7 @@ def _mapear_codigos_por_nombre(flujos: pd.DataFrame) -> Dict[str, str]:
 
 def _anadir_pesos(grafo: nx.Graph, flujos: pd.DataFrame, posiciones: Dict[str, Tuple[float, float]]) -> None:
     total = 0.0
+    pax_por_aer: Dict[str, float] = {}
     for fila in flujos.itertuples(index=False):
         u = getattr(fila, "origen_id")
         v = getattr(fila, "destino_id")
@@ -74,6 +75,8 @@ def _anadir_pesos(grafo: nx.Graph, flujos: pd.DataFrame, posiciones: Dict[str, T
             continue
         if u not in posiciones or v not in posiciones:
             continue
+        pax_por_aer[u] = pax_por_aer.get(u, 0.0) + pasajeros
+        pax_por_aer[v] = pax_por_aer.get(v, 0.0) + pasajeros
         if grafo.has_edge(u, v):
             grafo.edges[u, v]["pasajeros_anuales"] = grafo.edges[u, v].get("pasajeros_anuales", 0.0) + pasajeros
         else:
@@ -90,22 +93,46 @@ def _anadir_pesos(grafo: nx.Graph, flujos: pd.DataFrame, posiciones: Dict[str, T
     for u, v, datos in grafo.edges(data=True):
         w = float(datos.get("pasajeros_anuales", 0.0)) / total
         grafo.edges[u, v]["w_ij"] = w
+    return pax_por_aer
 
 
 def preparar_grafo(config: AppConfig) -> nx.Graph:
     flujos = leer_flujos_ministerio(config.flujos_csv)
     # Mapeo de nombres a codigos basado en los flujos
     mapa_codigos = _mapear_codigos_por_nombre(flujos)
+    claves_nombres = list(mapa_codigos.keys())
 
     aeropuertos_raw = cargar_aeropuertos_csv(config.aeropuertos_csv, epsg_origen=config.epsg_origen)
-    if "Texto" in aeropuertos_raw.columns and "ID_Aeropuerto" not in aeropuertos_raw.columns:
-        def asignar_id(texto: str) -> str:
+    # Asignar IDs usando nombres limpìos y mapa de flujos; si no coincide, mantener o crear fallback
+    if "Texto" in aeropuertos_raw.columns:
+        def asignar_id(texto: str, actual: str) -> str:
             nombre_limpio = _limpiar_nombre(texto)
             if nombre_limpio in mapa_codigos:
                 return mapa_codigos[nombre_limpio]
+            tokens = set(nombre_limpio.split())
+            mejor_codigo = actual
+            mejor_score = 0
+            for clave in claves_nombres:
+                clave_tokens = set(clave.split())
+                inter = len(tokens & clave_tokens)
+                score = inter / max(1, len(clave_tokens))
+                if score > mejor_score:
+                    mejor_score = score
+                    mejor_codigo = mapa_codigos[clave]
+            if mejor_codigo:
+                return mejor_codigo
+            # fallback parcial por substring
+            for clave in claves_nombres:
+                if clave and (clave in nombre_limpio or nombre_limpio in clave):
+                    return mapa_codigos[clave]
+            if actual:
+                return actual
             # fallback: primeras letras del nombre limpio
             return nombre_limpio.replace(" ", "")[:5].upper()
-        aeropuertos_raw["ID_Aeropuerto"] = aeropuertos_raw["Texto"].map(asignar_id)
+        id_exist = aeropuertos_raw.get("ID_Aeropuerto", "")
+        aeropuertos_raw["ID_Aeropuerto"] = [
+            asignar_id(txt, act) for txt, act in zip(aeropuertos_raw["Texto"], id_exist if len(id_exist) else [""] * len(aeropuertos_raw))
+        ]
     aeropuertos_raw = aeropuertos_raw[aeropuertos_raw.get("ID_Aeropuerto", "") != ""]
 
     aeropuertos_df = _normalizar_aeropuertos(aeropuertos_raw)
@@ -134,8 +161,20 @@ def preparar_grafo(config: AppConfig) -> nx.Graph:
 
     posiciones = {fila.id: (float(fila.lat), float(fila.lon)) for fila in aeropuertos_df.itertuples(index=False)}
 
-    _anadir_pesos(grafo, flujos, posiciones)
+    pax_por_aer = _anadir_pesos(grafo, flujos, posiciones)
     _anadir_distancias(grafo, posiciones)
+
+    # Ajustar capacidad en base al trafico relativo (siempre que haya pax)
+    if pax_por_aer:
+        pax_max = max(pax_por_aer.values()) or 1.0
+        caps = []
+        for fila in aeropuertos_df.itertuples(index=False):
+            pax = pax_por_aer.get(getattr(fila, "id"), 0.0)
+            frac = pax / pax_max
+            cap = int(round(config.capacidad_min + frac * (config.capacidad_max - config.capacidad_min)))
+            caps.append(max(1, cap))
+        aeropuertos_df["capacidad"] = caps
+        aeropuertos_df.to_csv(config.aeropuertos_enriquecidos_csv, index=False, encoding="utf-8")
 
     return grafo
 
